@@ -1,12 +1,15 @@
-
 \documentclass{article} % For LaTeX2e
 \usepackage{iclr2025_conference,times}
+% T5 = Vietnamese glyphs for the inline examples; T1 stays the default text encoding.
+\usepackage[T5,T1]{fontenc}
+\newcommand{\viet}[1]{{\fontencoding{T5}\selectfont #1}}
 
 % Optional math commands from https://github.com/goodfeli/dlbook_notation.
 \input{math_commands.tex}
 
 \usepackage{hyperref}
 \usepackage{url}
+\usepackage{graphicx}
 
 
 \title{Formatting Instructions for ICLR 2025 \\ Conference Submissions}
@@ -56,34 +59,95 @@ Address \\
 \end{abstract}
 
 \section{Method}
-We follow SynthParaSpeech for the pipeline, using non-verbal vocalization (NVV) audio with voice conversion to splice in sound event to create speech with non-verbal element, with modifications to enhance the data quality.
-\subsection{Non-verbal vocalization dataset}
+\subsection{Overview}
+Our system extends a pretrained zero-shot TTS model with control over non-verbal
+vocalizations (NVV) in Vietnamese. Since Vietnamese speech with NVV annotations is scarce, we synthesize training data by inserting voice-converted NVV clips into real Vietnamese recordings at natural pauses, with an inline tag at the matching position in the transcript (\S\ref{sec:data}). We then fine-tune the TTS model on this data mixed . At inference, an inline tag such as \texttt{[laughter]} in the input text produces the corresponding vocalization in the cloned voice. Figure~\ref{fig:overview} gives an overview.
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=\linewidth]{figures/overview.pdf}
+  \caption{Overview. (a) Training-data synthesis on a real example: VAD pauses between
+  aligned words become slots; an omni LLM picks one slot and one tag; a VocalSound clip of
+  that class is sampled to match the speaker, converted to the speaker's voice with Seed-VC,
+  spliced into the pause and quality-filtered. (b) OmniVoice is fine-tuned on the synthetic
+  data with untagged ViVoice; at inference an inline tag produces the NVV in the cloned voice
+  (waveforms in (b) are illustrative).}
+  \label{fig:overview}
+\end{figure}
+
+\subsection{Base Model}
+
+We build on OmniVoice~\cite{omnivoice}, a massively multilingual zero-shot TTS model that maps text directly to multi-codebook acoustic tokens with a non-autoregressive diffusion language model and clones a voice from a reference recording. OmniVoice supports a small set of inline NVV tags, including \texttt{[laughter]} and \texttt{[sigh]}. However, these tags are few and not trained with Vietnamese, causing low diversity.
+
+\subsection{NVV training dat}\label{sec:data}
+\subsubsection{Non-verbal vocalization dataset}
 Using only VocalSound as non-verbal corpra is limited in tags and has many low quality audio contain long pause, random speech segment due to poor cut, ... To introduce more tags and enrich the corpra with high quality segment, we construct our own non-verbal corpra from 3 source: (1) combine with other NVV dataset such as FSD50K, DeeplyNVV subset, ... (2) Slice NVV element from pre-existing TTS dataset for extra tag. (3) Slice NVV element from system such as FishAudio2, GeminiTTS using our transcript for naturalness. 
 
 To get NVV element from speech segment with their transcript availabe, we first force align to get the correct timestamp for each word in the speech. The pause between the two words which house the NVV tag will serve as our anchor for NVV segment. We then apply FlexSED to clean up non NVV frames within the segment between words, ensuring no long pause exist in the element.
 
-\subsection{Tagging Transcript}
-Following the original pipeline proposed by SynthParaSpeech, we use VAD to locate a suitable pause to slot in a NVV clip in between. Qwen3-Aligner is used to ground where the gap is in the transcript, since the transcript will not have per-word time alignment. An audio will have many slots available for a suitable tag, so we mark then with <number>, e.gs: "chiến lược , <1> tức là <2> như vậy". 
+\subsubsection{Tagging Transcript}
+Following the original pipeline proposed by SynthParaSpeech, we use VAD to locate a suitable pause to slot in a NVV clip in between. Qwen3-Aligner is used to ground where the gap is in the transcript, since the transcript will not have per-word time alignment. An audio will have many slots available for a suitable tag, so we mark then with <number>, e.gs: "\viet{chiến lược , <1> tức là <2> như vậy}". 
 
 The new transcript with slots will go with the original audio to a omni model to process and analyze to select a tag from our NVV dataset to insert in one slot of the transcript to create the most natural sentence. A problem that arise is the model will mostly select neutral tone NVV element to insert in the transcript. We employ a simple load balancer to weight if a tag appear too much in the process audio, we will temporary remove it from the available tags presented to the LLM and make it select different tag. This ensure a balance NVV dataset.
 
-\subsection{Audio Selection}
+\subsubsection{Audio Selection}
 For each tag selected by the LLM, each clips had their feature extracted and be use to score later. Clips which are too silent or too short is excluded from the selection first, following by grading each audio clips on features which the voice conversion model preserved, to ensure matching style between slice in audio and original speech. These feature include: intensity, clarity, tempo and tilt. NVV element is then score for similarity for audio around the splicing point, the highest similarity is then selected, each feature score is average. 
-\subsection{Audio Insertion}
+\subsubsection{Audio Insertion}
 In addition, to ensure naturalness of speech, we analyze how much pause is there before and after each NVV tags, and create a mean scale of the $s_{pre}$ and $s_{post}$ for every tag. The target pause $T_{\mathrm{pre}}$ and $T_{\mathrm{post}}$ is calculated by
+\begin{equation}
 \begin{aligned}
 T_{\mathrm{pre}} &= \bar{T}_{p}\cdot s_g\cdot s_{\mathrm{pre}}^{(c)}\\
 T_{\mathrm{post}} &= \bar{T}_{p}\cdot s_g\cdot s_{\mathrm{post}}^{(c)}
 \end{aligned}
+\end{equation}
 with ${T}_{p}$ is the median pause duration of that speech. If the pre-existing pause don't meet the target, more padding is added
 
 The NVV is then normalize and converted to the speaker and insert in the audio tag location, ensure enough pause before and after the tag. The  whole clip is also Peak normalisation to 0.95 prevents clipping.
-\subsection{Quality Filtering}
-A final filtering step is needed to ensure audio quality. A row is kept if it satisfy 3 condition: (1) Its NISQA MOS drops by ≤ 0.5 from source to after splicing in NVV element. (2) Its NISQA discontinuity drops by ≤ 0.22. (3) Its boundary activity at the cut is ≤ 1.2.
+\subsubsection{Quality Filtering}
+A final filtering step is needed to ensure audio quality. A row is kept if it satisfy 3 condition: (1) Its NISQA MOS drops by $\le 0.5$ from source to after splicing in NVV element. (2) Its NISQA discontinuity drops by $\le 0.22$. (3) Its boundary activity at the cut is $\le 1.2$.
 
-\bibliography{iclr2025_conference}
-\bibliographystyle{iclr2025_conference}
+\subsection{Model Adaptation}
 
+\section{Experimental setup}
+
+\subsection{Data}
+Training uses ViVoice~\cite{vivoice} and the
+synthetic NVV set of \S\ref{sec:data}: XX utterances (XX\,h), with XX laughter, XX sigh, XX cough, XX throat-clearing, XX sneeze and XX sniff events. NVV clips are drawn from the VocalSound test and validation splits only. Each training batch mixes synthetic and untagged utterances at a ratio of XX:XX. We hold out XX speakers, unseen in training, for evaluation. All audio is resampled to XX\,kHz.
+
+\subsection{Training}
+We initialise from the public OmniVoice checkpoint (k2-fsa/OmniVoice) and fine-tune
+all parameters with AdamW ($\beta_1{=}0.9$, $\beta_2{=}0.98$), peak learning rate XX, XX warm-up steps
+and % cosine / linear
+decay, for XX steps with a batch of XX\,s of audio per GPU, in bf16. Training takes XX\,h
+on NVIDIA B200. The training objective is unchanged from OmniVoice. We select the final checkpoint.
+
+\subsection{Baselines}
+We compare against
+(i)~OmniVoice without fine-tuning, given the same tagged input;
+(ii)~OmniVoice fine-tuned on ViVoice alone, without NVV data, which isolates the effect of
+the NVV data from in-domain Vietnamese adaptation;
+
+\subsection{Evaluation}
+The test set contains XX sentences written for evaluation, each with one NVV tag, giving XX
+sentences per class. Each sentence is synthesised for XX held-out speakers, prompted with
+a XX\,s reference utterance.
+
+\textbf{Objective.} 
+NV Placement Accuracy (NVPA): Measures whether the required non-verbal vocalizations are correctly realized at their intended positions in the synthesized speech. An NV event is considered correctly realized only when the required NV type is present at the intended position. Range: 0 to 1, where higher is better.
+
+Speech Naturalness (SN): Measures the overall naturalness, fluency, and human-likeness of the synthesized speech, including the speech surrounding the non-verbal vocalizations. Scale: 1 to 5, where higher is better.
+
+Quality (Q): Measures the overall perceptual quality of the synthesized audio, including audible artifacts, distortions, noise, and other audio degradations. Scale: 1 to 5, where higher is better.
+
+Word Error Rate (WER): Evaluates the intelligibility and content accuracy of the synthesized speech by comparing the recognized speech with the input transcript using a pretrained ASR model (Zipformer). Non-verbal tags are excluded from WER computation. Range: 0 to 1, where lower is better.
+
+Predicted MOS (pMOS): Measures the predicted perceptual quality and naturalness of the synthesized speech using an automatic MOS prediction model (DNSMOS). Scale: 1 to 5, where higher is better.
+
+Speaker Similarity (SS): Measures the similarity between the target/reference speaker and the synthesized speech using a pretrained speaker recognition model (ECAPA-TDNN). Range: 0 to 1, where higher is better.
+
+\textbf{Subjective.} XX native Vietnamese listeners rate XX samples per system on
+naturalness (MOS, 1--5) and on whether the vocalisation sounds natural at its position
+(NVV-MOS, 1--5). We report means with 95\% confidence intervals.
 \appendix
 \section{Appendix}
 You may include other additional sections here.
