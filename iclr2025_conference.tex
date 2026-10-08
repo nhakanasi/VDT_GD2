@@ -1,0 +1,92 @@
+
+\documentclass{article} % For LaTeX2e
+\usepackage{iclr2025_conference,times}
+
+% Optional math commands from https://github.com/goodfeli/dlbook_notation.
+\input{math_commands.tex}
+
+\usepackage{hyperref}
+\usepackage{url}
+
+
+\title{Formatting Instructions for ICLR 2025 \\ Conference Submissions}
+
+% Authors must not appear in the submitted version. They should be hidden
+% as long as the \iclrfinalcopy macro remains commented out below.
+% Non-anonymous submissions will be rejected without review.
+
+\author{Antiquus S.~Hippocampus, Natalia Cerebro \& Amelie P. Amygdale \thanks{ Use footnote for providing further information
+about author (webpage, alternative address)---\emph{not} for acknowledging
+funding agencies.  Funding acknowledgements go at the end of the paper.} \\
+Department of Computer Science\\
+Cranberry-Lemon University\\
+Pittsburgh, PA 15213, USA \\
+\texttt{\{hippo,brain,jen\}@cs.cranberry-lemon.edu} \\
+\And
+Ji Q. Ren \& Yevgeny LeNet \\
+Department of Computational Neuroscience \\
+University of the Witwatersrand \\
+Joburg, South Africa \\
+\texttt{\{robot,net\}@wits.ac.za} \\
+\AND
+Coauthor \\
+Affiliation \\
+Address \\
+\texttt{email}
+}
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to \LaTeX{} to determine where to break
+% the lines. Using \AND forces a linebreak at that point. So, if \LaTeX{}
+% puts 3 of 4 authors names on the first line, and the last on the second
+% line, try using \AND instead of \And before the third author name.
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+%\iclrfinalcopy % Uncomment for camera-ready version, but NOT for submission.
+\begin{document}
+
+
+\maketitle
+
+\begin{abstract}
+\end{abstract}
+
+\section{Method}
+We follow SynthParaSpeech for the pipeline, using non-verbal vocalization (NVV) audio with voice conversion to splice in sound event to create speech with non-verbal element, with modifications to enhance the data quality.
+\subsection{Non-verbal vocalization dataset}
+Using only VocalSound as non-verbal corpra is limited in tags and has many low quality audio contain long pause, random speech segment due to poor cut, ... To introduce more tags and enrich the corpra with high quality segment, we construct our own non-verbal corpra from 3 source: (1) combine with other NVV dataset such as FSD50K, DeeplyNVV subset, ... (2) Slice NVV element from pre-existing TTS dataset for extra tag. (3) Slice NVV element from system such as FishAudio2, GeminiTTS using our transcript for naturalness. 
+
+To get NVV element from speech segment with their transcript availabe, we first force align to get the correct timestamp for each word in the speech. The pause between the two words which house the NVV tag will serve as our anchor for NVV segment. We then apply FlexSED to clean up non NVV frames within the segment between words, ensuring no long pause exist in the element.
+
+\subsection{Tagging Transcript}
+Following the original pipeline proposed by SynthParaSpeech, we use VAD to locate a suitable pause to slot in a NVV clip in between. Qwen3-Aligner is used to ground where the gap is in the transcript, since the transcript will not have per-word time alignment. An audio will have many slots available for a suitable tag, so we mark then with <number>, e.gs: "chiến lược , <1> tức là <2> như vậy". 
+
+The new transcript with slots will go with the original audio to a omni model to process and analyze to select a tag from our NVV dataset to insert in one slot of the transcript to create the most natural sentence. A problem that arise is the model will mostly select neutral tone NVV element to insert in the transcript. We employ a simple load balancer to weight if a tag appear too much in the process audio, we will temporary remove it from the available tags presented to the LLM and make it select different tag. This ensure a balance NVV dataset.
+
+\subsection{Audio Selection}
+For each tag selected by the LLM, each clips had their feature extracted and be use to score later. Clips which are too silent or too short is excluded from the selection first, following by grading each audio clips on features which the voice conversion model preserved, to ensure matching style between slice in audio and original speech. These feature include: intensity, clarity, tempo and tilt. NVV element is then score for similarity for audio around the splicing point, the highest similarity is then selected, each feature score is average. 
+\subsection{Audio Insertion}
+In addition, to ensure naturalness of speech, we analyze how much pause is there before and after each NVV tags, and create a mean scale of the $s_{pre}$ and $s_{post}$ for every tag. The target pause $T_{\mathrm{pre}}$ and $T_{\mathrm{post}}$ is calculated by
+\begin{aligned}
+T_{\mathrm{pre}} &= \bar{T}_{p}\cdot s_g\cdot s_{\mathrm{pre}}^{(c)}\\
+T_{\mathrm{post}} &= \bar{T}_{p}\cdot s_g\cdot s_{\mathrm{post}}^{(c)}
+\end{aligned}
+with ${T}_{p}$ is the median pause duration of that speech. If the pre-existing pause don't meet the target, more padding is added
+
+The NVV is then normalize and converted to the speaker and insert in the audio tag location, ensure enough pause before and after the tag. The  whole clip is also Peak normalisation to 0.95 prevents clipping.
+\subsection{Quality Filtering}
+A final filtering step is needed to ensure audio quality. A row is kept if it satisfy 3 condition: (1) Its NISQA MOS drops by ≤ 0.5 from source to after splicing in NVV element. (2) Its NISQA discontinuity drops by ≤ 0.22. (3) Its boundary activity at the cut is ≤ 1.2.
+
+\bibliography{iclr2025_conference}
+\bibliographystyle{iclr2025_conference}
+
+\appendix
+\section{Appendix}
+You may include other additional sections here.
+
+
+\end{document}
