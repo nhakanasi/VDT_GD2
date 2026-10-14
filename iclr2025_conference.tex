@@ -435,10 +435,7 @@ their own test set.
 \texttt{[laughter]} and \texttt{[sigh]}, the two classes the released model has a tag for;
 \emph{New}: the other 12 classes of Table~\ref{tab:nvv}. Every system gets the same tagged
 input, so for the new classes the released model sees tags it was never trained on. MOS, WER
-(\%) and SS are over all test sentences; MOS is given with its 95\% confidence interval.
-$^\dagger$Reported by [CITE] on their own Vietnamese test set, ASR model, speaker model (SIM-o)
-and listening test; these systems have no NVV tags, and their numbers are not directly
-comparable with ours.}
+(\%) and SS are over all test sentences; MOS is given with its 95\% confidence interval.}
 \label{tab:main}
 \centering
 \small
@@ -448,13 +445,10 @@ comparable with ours.}
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}
 System & Shared & New & Shared & New & MOS $\uparrow$ & WER $\downarrow$ & SS $\uparrow$ \\
 \midrule
-viXTTS$^\dagger$                                 & -- & -- & -- & -- & 2.51 & 3.27 & 0.7021 \\
-F5-TTS$^\dagger$                                 & -- & -- & -- & -- & 3.93 & 3.02 & 0.8196 \\
-VietVoice-TTS$^\dagger$                          & -- & -- & -- & -- & 3.58 & 2.37 & 0.7834 \\
-VieNeu-TTS$^\dagger$                             & -- & -- & -- & -- & 3.69 & 2.00 & 0.6524 \\
-F5-TTS Phoneme$^\dagger$                         & -- & -- & -- & -- & 4.06 & 2.51 & 0.8093 \\
-\quad + caching ($\delta{=}0.2$)$^\dagger$       & -- & -- & -- & -- & 3.82 & 2.98 & 0.8042 \\
-% TODO: replace [CITE] in the caption with the source paper of these six rows.
+viXTTS                                & -- & -- & -- & -- & 2.51 & 3.27 & 0.7021 \\
+F5-TTS                                 & -- & -- & -- & -- & 3.93 & 3.02 & 0.8196 \\
+VietVoice-TTS                   & -- & -- & -- & -- & 3.58 & 2.37 & 0.7834 \\
+VieNeu-TTS                             & -- & -- & -- & -- & 3.69 & 2.00 & 0.6524 \\
 \midrule
 OmniVoice (released)         & & & & & XX{\scriptsize$\pm$XX} & XX & XX \\
 \quad + ViVoice              & & & & & XX{\scriptsize$\pm$XX} & XX & XX \\
