@@ -1,0 +1,20 @@
+% Results table body (Table~\ref{tab:main}). The paper includes it with
+% \input{tables/main_results} inside a table environment that holds the caption and label.
+% Preview: pdflatex main_results_preview.tex (in this directory).
+\small
+\begin{tabular}{lrrrrrrr}
+\toprule
+ & \multicolumn{2}{c}{NVMR $\downarrow$} & \multicolumn{2}{c}{NVPA $\uparrow$} & & & \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+System & Shared & New & Shared & New & MOS $\uparrow$ & WER $\downarrow$ & SS $\uparrow$ \\
+\midrule
+viXTTS                       & -- & -- & -- & -- & 2.51 & 3.27 & 0.7021 \\
+F5-TTS                       & -- & -- & -- & -- & 3.93 & 3.02 & 0.8196 \\
+VietVoice-TTS                & -- & -- & -- & -- & 3.58 & 2.37 & 0.7834 \\
+VieNeu-TTS                   & -- & -- & -- & -- & 3.69 & 2.00 & 0.6524 \\
+\midrule
+OmniVoice (released)         & & & & & XX{\scriptsize$\pm$XX} & XX & XX \\
+\quad + ViVoice              & & & & & XX{\scriptsize$\pm$XX} & XX & XX \\
+\quad + ViVoice + NVV (ours) & & & & & XX{\scriptsize$\pm$XX} & XX & XX \\
+\bottomrule
+\end{tabular}
