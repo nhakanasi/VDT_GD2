@@ -10,6 +10,8 @@
 \usepackage{hyperref}
 \usepackage{url}
 \usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{float}
 
 
 \title{Formatting Instructions for ICLR 2025 \\ Conference Submissions}
@@ -59,7 +61,6 @@ Address \\
 \end{abstract}
 
 \section{Method}
-\subsection{Overview}
 Our system extends a pretrained zero-shot TTS model with control over non-verbal
 vocalizations (NVV) in Vietnamese. Since Vietnamese speech with NVV annotations is scarce, we synthesize training data by inserting voice-converted NVV clips into real Vietnamese recordings at natural pauses, with an inline tag at the matching position in the transcript (\S\ref{sec:data}). We then fine-tune the TTS model on this data mixed . At inference, an inline tag such as \texttt{[laughter]} in the input text produces the corresponding vocalization in the cloned voice. Figure~\ref{fig:overview} gives an overview.
 
@@ -67,7 +68,7 @@ vocalizations (NVV) in Vietnamese. Since Vietnamese speech with NVV annotations 
   \centering
   \includegraphics[width=\linewidth]{figures/overview.pdf}
   \caption{Overview. (a) Training-data synthesis on a real example: VAD pauses between
-  aligned words become slots; an omni LLM picks one slot and one tag; a VocalSound clip of
+  aligned words become slots; an omni LLM picks one slot and one tag; an NVV clip of
   that class is sampled to match the speaker, converted to the speaker's voice with Seed-VC,
   spliced into the pause and quality-filtered. (b) OmniVoice is fine-tuned on the synthetic
   data with untagged ViVoice; at inference an inline tag produces the NVV in the cloned voice
@@ -75,44 +76,262 @@ vocalizations (NVV) in Vietnamese. Since Vietnamese speech with NVV annotations 
   \label{fig:overview}
 \end{figure}
 
-\subsection{Base Model}
+\subsection{NVV training data}\label{sec:data}
+\subsubsection{Non-verbal vocalization corpus}
+% Code: ../VocalSoundExtend (nvv/pipeline.py, nvv/nvs38k.py, nvv/fsd50k.py) and
+% ../Para/scripts/build_clip_index.py.
+VocalSound~\citep{vocalsound} alone is limited: it covers six classes (laughter, sigh, cough,
+throat clearing, sneeze, sniff), and its crowdsourced clips often carry long silences or stray
+speech from a loose cut. To add classes and keep only clean events, we pool NVV clips from
+three kinds of source: (1)~other NVV corpora: the Deeply Nonverbal Vocalization dataset, whose
+vocal classes we use as they are,% TODO cite
+\ and FSD50K~\citep{fsd50k}, whose clip-level labels we localise in time; (2)~NVV events cut
+from an existing tagged speech corpus, NonVerbalSpeech-38K (NVS-38K);% TODO cite
+\ and (3)~events cut from speech generated with our transcripts by commercial TTS systems
+(FishAudio, Gemini TTS).
+% TODO (3): no code for this source exists in Para or VocalSoundExtend, and no such clip
+% is in the clip index behind Table 1. Confirm it was used, or drop it.
+For VocalSound we keep only the test and validation splits (\S\ref{sec:exp-data}).
 
-We build on OmniVoice~\cite{omnivoice}, a massively multilingual zero-shot TTS model that maps text directly to multi-codebook acoustic tokens with a non-autoregressive diffusion language model and clones a voice from a reference recording. OmniVoice supports a small set of inline NVV tags, including \texttt{[laughter]} and \texttt{[sigh]}. However, these tags are few and not trained with Vietnamese, causing low diversity.
+Each source locates its events differently. For NVS-38K, whose captions carry one inline
+tag, we force-align the caption words with Qwen3-ForcedAligner. The aligner tends to stretch
+the neighbouring words over the non-verbal sound, so the gap between the two words around the
+tag does not give the event's extent. It only confirms that the tag refers to the dataset's
+own detected non-verbal region (within 1\,s), and that region is what we cut. FSD50K has
+clip-level labels only, so FlexSED's frame posterior for the class prompt locates the
+events (frames ${\ge}\,0.5$, gaps up to 0.3\,s merged). Clips that carry two of our target
+labels are skipped, since their events could not be told apart.
 
-\subsection{NVV training dat}\label{sec:data}
-\subsubsection{Non-verbal vocalization dataset}
-Using only VocalSound as non-verbal corpra is limited in tags and has many low quality audio contain long pause, random speech segment due to poor cut, ... To introduce more tags and enrich the corpra with high quality segment, we construct our own non-verbal corpra from 3 source: (1) combine with other NVV dataset such as FSD50K, DeeplyNVV subset, ... (2) Slice NVV element from pre-existing TTS dataset for extra tag. (3) Slice NVV element from system such as FishAudio2, GeminiTTS using our transcript for naturalness. 
+Every located event is then cut and checked in the same way. Its edges are tightened to the
+frame energy within $\pm$0.2\,s of the region, then padded by 75\,ms and faded by 10\,ms. The
+event is kept only if (i)~FlexSED scores its class ${\ge}\,0.5$ over the sound and scores no
+VocalSound class higher, so a new class does not duplicate an existing one; (ii)~no other
+labelled sound of the recording scores ${\ge}\,0.5$ over it; (iii)~Qwen3-ASR finds no lexical
+word in it, so no speech overlaps it; (iv)~its length is within a per-class range (e.g.
+0.2--2.5\,s for breathing, 0.8--4.0\,s for a yawn); (v)~its SNR against the recording's
+noise floor is at least 6\,dB; and (vi)~at most 0.1\% of its samples are clipped.
+Table~\ref{tab:nvv} lists the resulting 14 classes.
 
-To get NVV element from speech segment with their transcript availabe, we first force align to get the correct timestamp for each word in the speech. The pause between the two words which house the NVV tag will serve as our anchor for NVV segment. We then apply FlexSED to clean up non NVV frames within the segment between words, ensuring no long pause exist in the element.
+\begin{table}[t]
+\caption{NVV clip pool per tag. \emph{Temporary}: counted on the local build of the clip
+index, which holds the full VocalSound corpus and a partial NVS-38K run; regenerate from the
+server's index before submission. Hours are the summed clip durations. Sources: VS = VocalSound,
+DNV = Deeply Nonverbal Vocalization, FSD = FSD50K, NVS = NVS-38K.}
+\label{tab:nvv}
+\centering
+\small
+% Counted from ../Para/data/vocalsound/vocalsound_all.jsonl (built 2026-10-09). On the server, VS
+% is test+val only (5,446 clips, about 907 per class), so the VS rows shrink to about 26% of the
+% clips and hours shown here.
+\begin{tabular}{llrr}
+\toprule
+Tag & Sources (clips) & Clips & Hours \\
+\midrule
+\texttt{laughter}       & VS 3,498; DNV 25          & 3,523  & 4.16 \\
+\texttt{sigh}           & VS 3,498; DNV 51          & 3,549  & 4.48 \\
+\texttt{cough}          & VS 3,497; DNV 50          & 3,547  & 4.49 \\
+\texttt{throatclearing} & VS 3,497; DNV 54          & 3,551  & 3.78 \\
+\texttt{sneeze}         & VS 3,496; DNV 52          & 3,548  & 3.78 \\
+\texttt{sniff}          & VS 3,499                  & 3,499  & 3.88 \\
+\midrule
+\texttt{breathing}      & FSD 324; NVS 55           & 379    & 0.11 \\
+\texttt{screaming}      & FSD 233; DNV 51           & 284    & 0.14 \\
+\texttt{gasp}           & FSD 147; NVS 17           & 164    & 0.03 \\
+\texttt{snoring}        & FSD 161; NVS 2            & 163    & 0.08 \\
+\texttt{crying}         & FSD 83; DNV 24; NVS 11    & 118    & 0.07 \\
+\texttt{yawn}           & DNV 48; FSD 22; NVS 2     & 72     & 0.05 \\
+\texttt{moan}           & DNV 45; FSD 23            & 68     & 0.05 \\
+\texttt{pant}           & DNV 44; FSD 11            & 55     & 0.04 \\
+\midrule
+Total                   &                           & 22,520 & 25.12 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\subsubsection{Tagging Transcript}
-Following the original pipeline proposed by SynthParaSpeech, we use VAD to locate a suitable pause to slot in a NVV clip in between. Qwen3-Aligner is used to ground where the gap is in the transcript, since the transcript will not have per-word time alignment. An audio will have many slots available for a suitable tag, so we mark then with <number>, e.gs: "\viet{chiến lược , <1> tức là <2> như vậy}". 
+\subsubsection{Slot finding and tagging}
+Following SynParaSpeech~\citep{synparaspeech}, we first find the pauses where an NVV could go and
+only then let a model choose among them. Placing the tag first and aligning it afterwards
+fails on connected speech: the boundary between two words is usually continuous voicing, and
+on a 20-utterance pilot the nearest real pause was a median 2.02\,s away from the aligned tag.
+Silero VAD finds the speech regions. Regions less than 0.10\,s apart are merged, so stop
+closures and glottal breaks do not count as pauses, and the remaining gaps are trimmed by
+0.05\,s at each edge and kept if at least 0.12\,s long. Silence before the first word and
+after the last is ignored. ViVoice transcripts have no word timing, so Qwen3-ForcedAligner
+aligns the untagged transcript to the audio. A pause becomes a \emph{slot} when it overlaps
+the gap between two aligned words; if two pauses fall in one gap, the longer is kept. Each slot
+records its midpoint and the character offset of the word after it. If any word cannot be
+matched back to the transcript in order, the utterance gets no slots and is skipped, rather
+than risk a tag between the wrong two words. The slots are marked with numbers in the
+transcript, e.g. ``\viet{chiáº¿n lÆ°á»£c , <1> tá»©c lÃ  <2> nhÆ° váº­y}''.
 
-The new transcript with slots will go with the original audio to a omni model to process and analyze to select a tag from our NVV dataset to insert in one slot of the transcript to create the most natural sentence. A problem that arise is the model will mostly select neutral tone NVV element to insert in the transcript. We employ a simple load balancer to weight if a tag appear too much in the process audio, we will temporary remove it from the available tags presented to the LLM and make it select different tag. This ensure a balance NVV dataset.
+The recording and the marked transcript go to Qwen3-Omni-30B-A3B-Instruct, served locally with
+vLLM. The model is asked to listen to the delivery and answer in JSON with the one marker where
+a non-verbal sound would most plausibly occur and the one tag from the offered list that fits
+what the speaker is doing there, or \texttt{\{"slot": null\}} if no position suits any sound.
+We sample with temperature 0.2 and top-$p$ 0.95. An invalid reply is retried, up to three
+attempts in all, and a null answer skips the utterance. The model never writes transcript
+text: the tagged transcript is built in code by inserting \texttt{[tag]} at the chosen slot's
+character offset, and the splice time is the slot's midpoint, so text and audio refer to the
+same point by construction.
 
-\subsubsection{Audio Selection}
-For each tag selected by the LLM, each clips had their feature extracted and be use to score later. Clips which are too silent or too short is excluded from the selection first, following by grading each audio clips on features which the voice conversion model preserved, to ensure matching style between slice in audio and original speech. These feature include: intensity, clarity, tempo and tilt. NVV element is then score for similarity for audio around the splicing point, the highest similarity is then selected, each feature score is average. 
-\subsubsection{Audio Insertion}
-In addition, to ensure naturalness of speech, we analyze how much pause is there before and after each NVV tags, and create a mean scale of the $s_{pre}$ and $s_{post}$ for every tag. The target pause $T_{\mathrm{pre}}$ and $T_{\mathrm{post}}$ is calculated by
+Left alone, the model settles on a few neutral classes; on the pilot it chose only laughter
+and sigh. A tag balancer therefore keeps a running count of the tags assigned so far, carried
+across runs, and withholds from the offered list any tag that holds more than 25\% of them,
+with the share taken over at least 20 tags. A reply that names a withheld tag is re-asked. The
+tag is offered again once the other tags catch up.
+% NOTE: with 14 tags a 25% cap is about 3.5x the uniform share (7%), so it only stops runaway
+% tags; tagging.max_tag_share can be lowered towards 1/14 for a flatter distribution.
+% CHECK configs/server.yaml: tagging.tags is unset, so the model is offered all 17 classes in
+% vocalsound.VS_CLASSES, including yell, burp and grunt, which have no clips in the local index.
+
+\subsubsection{Clip selection}
+Within the chosen class, one clip is drawn at random, weighted towards clips that match the host
+speaker on the properties that Seed-VC passes through unchanged. Speaker timbre, pitch level
+and pitch contour are rebuilt by the conversion (with F0 conditioning off), so we do not match
+on them. Clips whose peak is below 0.05 or that are shorter than 0.35\,s after trimming
+silence, and clips with more than 1\% of samples at full scale, are excluded. Four measures
+are taken on each trimmed clip and on the 2.5\,s of speech before the cut:
+\emph{intensity}, the mean of the clip's crest-factor and duration ranks within its class,
+against the rank of the context window's RMS among all windows of that length in the
+utterance; \emph{clarity}, the SNR as the ratio of the 90th to the 10th percentile of 20\,ms
+frame RMS (0--60\,dB, measured on the whole utterance for the speaker); \emph{tempo}, envelope
+peaks per second, compared in octaves and used for laughter only, since the timing of a cough
+or sneeze has nothing to do with speaking rate; and \emph{tilt}, the slope of a line fitted to
+the log envelope, in dB from start to end. Each distance $d_a$ is divided by a tolerance set to
+about a third of its measured spread (0.35 rank, 12\,dB, 1 octave, 18\,dB), and a clip is
+drawn with probability proportional to
+\begin{equation}
+w = \exp\Big(-\sum_a \lambda_a d_a\Big),
+\end{equation}
+with weights $\lambda = 1.0, 1.5, 1.0, 0.5$ for intensity, clarity, tempo and tilt. Clarity
+weighs most because VocalSound's microphones vary far more than its speakers' loudness. Tilt
+has half weight because its premise, that a speaker trailing off should be followed by a
+decaying event, has not been confirmed by listening. Sampling, rather than taking the closest
+clip, keeps every usable clip possible, so a soft-spoken speaker still sometimes gets a loud
+laugh. For the same reason the intensity target is drawn per row from
+$\mathcal{N}(r, 0.2^2)$, clipped to $[0,1]$, around the speaker's own rank $r$. Clip features
+are precomputed once for the whole pool, so every row samples from the full class.
+
+\subsubsection{Voice conversion and insertion}
+The selected clip is trimmed of silence, peak-normalised to 0.95 and zero-padded to at least
+1\,s, as Seed-VC's input chunking requires. It is converted with Seed-VC~v1 (50 diffusion
+steps, classifier-free guidance rate 0.7, length adjustment 1.0, F0 conditioning off), using
+the host utterance itself as the voice reference, at 22.05\,kHz, and is trimmed again
+afterwards. F0 conditioning is off because its pitch tracker (RMVPE) is built for speech and
+singing and fails on coughs, sniffs and throat clearing.
+
+The converted event's RMS is set to the RMS of the 2.5\,s of speech before the cut plus a
+per-class offset (laughter $+3$\,dB, sneeze $+4$, cough $+2$, throat clearing $-2$, sigh $-4$,
+sniff $-5$, and 0 for the other classes), and its peak is capped at 1.5 times the speech's
+99.9th-percentile level. The recording is cut at the slot's midpoint, and a 50\,ms exponential
+fade (curvature $k{=}5$) is applied to all four edges: the end of the speech before the cut,
+both ends of the event and the start of the speech after it. An exponential fade reaches half
+level within the first 14\% of its length, which keeps the sharp onset of a laugh or cough
+that a cosine fade would soften. Each side of the event should then carry about as much silence
+as the speaker normally pauses for. The target pauses are
 \begin{equation}
 \begin{aligned}
 T_{\mathrm{pre}} &= \bar{T}_{p}\cdot s_g\cdot s_{\mathrm{pre}}^{(c)}\\
 T_{\mathrm{post}} &= \bar{T}_{p}\cdot s_g\cdot s_{\mathrm{post}}^{(c)}
 \end{aligned}
 \end{equation}
-with ${T}_{p}$ is the median pause duration of that speech. If the pre-existing pause don't meet the target, more padding is added
+where $\bar{T}_{p}$ is the median gap between voiced stretches of the utterance, clamped to
+$[0.04, 0.40]$\,s, $s_g{=}1$ is a global scale, and $(s_{\mathrm{pre}}^{(c)},
+s_{\mathrm{post}}^{(c)})$ are per-class scales. Events that end on emptied lungs need a longer
+beat after them: laughter $(0.6, 1.4)$, sigh $(0.5, 1.2)$, cough and throat clearing
+$(0.7, 1.0)$, sneeze $(0.8, 1.3)$, sniff $(0.5, 0.7)$, and $(1, 1)$ for the other classes.
+% NOTE: the earlier draft said these scales were measured from the pauses around each tag. In
+% the code (Para/para_synth/vocalsound.py, GAP_SHAPE) they are priors set from this
+% respiratory reasoning, not measurements, and only the six VocalSound classes have them.
+% Measure them, or keep this wording.
+The target is a total, not an addition: the inserted silence is
+$\max(0, T - T_{\mathrm{exist}})$, where $T_{\mathrm{exist}}$ is the silence already on that
+side of the cut, so the speaker's own pause is never shortened. Inserted silence is filled
+with the recording's own background noise, its quietest 100\,ms tiled with crossfaded seams,
+since generated white noise audibly hissed. Finally the whole recording is peak-normalised to
+0.95 and written as 16-bit PCM at 22.05\,kHz.
 
-The NVV is then normalize and converted to the speaker and insert in the audio tag location, ensure enough pause before and after the tag. The  whole clip is also Peak normalisation to 0.95 prevents clipping.
-\subsubsection{Quality Filtering}
-A final filtering step is needed to ensure audio quality. A row is kept if it satisfy 3 condition: (1) Its NISQA MOS drops by $\le 0.5$ from source to after splicing in NVV element. (2) Its NISQA discontinuity drops by $\le 0.22$. (3) Its boundary activity at the cut is $\le 1.2$.
+\subsubsection{Quality filtering}
+Every finished row is scored with NISQA~v2.0~\citep{nisqa}, a no-reference predictor of the
+mean opinion score (MOS) and of four quality dimensions, on both the source recording and the
+spliced one. A row is kept if (1)~its NISQA MOS drops by ${\le}\,0.5$ from source to result,
+(2)~its NISQA discontinuity drops by ${\le}\,0.22$, catching an audible seam at the splice, and
+(3)~its boundary activity at the cut is ${\le}\,1.2$. The thresholds apply to the drop rather
+than to absolute scores, because an absolute floor mostly measures how clean the input corpus
+was. Boundary activity covers what NISQA cannot hear once the fades and the silence have
+smoothed the junctions. It is measured on the source recording as the RMS of the 50\,ms on
+each side of the cut divided by the RMS of that whole side (0 means the cut is in silence, about
+1 means it is in speech of average loudness), and a row is judged by its worse side. The
+thresholds were set on the 20-utterance pilot: the MOS threshold removes one clear outlier, and
+the other two were chosen by listening. Seed-VC's diffusion is not seeded, so a rejection means
+that one conversion was bad, and re-rendering a rejected row may produce a passing take.
 
-\subsection{Model Adaptation}
+\subsection{Model adaptation}\label{sec:adapt}
+We build on OmniVoice~\citep{omnivoice}, a massively multilingual zero-shot TTS model that maps
+text directly to multi-codebook acoustic tokens with a non-autoregressive diffusion language
+model and clones a voice from a reference recording. The released model cannot generate
+Vietnamese NVVs as it stands, for three reasons. First, its tag set is small: of its 13 inline
+tags, only \texttt{[laughter]} and \texttt{[sigh]} are non-verbal sounds, the other 11 being
+lexical interjections such as \texttt{[question-ah]} and \texttt{[surprise-wa]}, so 12 of our
+14 classes (Table~\ref{tab:nvv}) have no tag at all. Second, it has never seen a tag in
+Vietnamese. About 8.5k hours of Vietnamese speech, ViVoice among it, are in its training data,
+but all of it is untagged; its tagged data come from Chinese and English corpora (NVSpeech,
+NVS-38K and ParaSpeechCaps).% TODO cite NVSpeech, ParaSpeechCaps
+\ Third, it was not trained for tag control: these corpora are a small fraction of its 581k
+hours of training data, and the OmniVoice paper does not evaluate tag control. In practice the
+released model often drops the tag. Given Vietnamese text, it produces no vocalization at the
+tag for XX\% of \texttt{[laughter]} and \texttt{[sigh]} tags, the two it does support, and for
+XX\% of the other 12 (NVMR, \S\ref{sec:eval} and Table~\ref{tab:main}).
+
+We therefore fine-tune OmniVoice on the synthetic data of \S\ref{sec:data}, which supplies all
+14 tags on Vietnamese speech, mixed with untagged ViVoice utterances to preserve ordinary
+Vietnamese synthesis (\S\ref{sec:exp-data}). Nothing else changes: the training objective is
+OmniVoice's own, and at inference the tag is written inline in the input text, as with
+OmniVoice's tags.
 
 \section{Experimental setup}
 
-\subsection{Data}
+\subsection{Data}\label{sec:exp-data}
 Training uses ViVoice~\cite{vivoice} and the
-synthetic NVV set of \S\ref{sec:data}: XX utterances (XX\,h), with XX laughter, XX sigh, XX cough, XX throat-clearing, XX sneeze and XX sniff events. NVV clips are drawn from the VocalSound test and validation splits only. Each training batch mixes synthetic and untagged utterances at a ratio of XX:XX. We hold out XX speakers, unseen in training, for evaluation. All audio is resampled to XX\,kHz.
+synthetic NVV set of \S\ref{sec:data}: XX utterances (XX\,h), each with one event from the 14
+classes of Table~\ref{tab:nvv}; Table~\ref{tab:synth} breaks it down by tag.
+
+\begin{table}[t]
+\caption{Synthetic NVV training set per tag, after quality filtering. Each utterance carries
+one event. Hours are the total duration of the finished utterances.}
+\label{tab:synth}
+\centering
+\small
+% Fill from the exported manifest (para-synth export): group rows by the [tag] in `text`,
+% count them and sum `duration`, which is re-measured after splicing.
+\begin{tabular}{lrr}
+\toprule
+Tag & Utterances & Hours \\
+\midrule
+\texttt{laughter}       & XX & XX \\
+\texttt{sigh}           & XX & XX \\
+\texttt{cough}          & XX & XX \\
+\texttt{throatclearing} & XX & XX \\
+\texttt{sneeze}         & XX & XX \\
+\texttt{sniff}          & XX & XX \\
+\midrule
+\texttt{breathing}      & XX & XX \\
+\texttt{screaming}      & XX & XX \\
+\texttt{gasp}           & XX & XX \\
+\texttt{snoring}        & XX & XX \\
+\texttt{crying}         & XX & XX \\
+\texttt{yawn}           & XX & XX \\
+\texttt{moan}           & XX & XX \\
+\texttt{pant}           & XX & XX \\
+\midrule
+Total                   & XX & XX \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+VocalSound clips are drawn from its test and validation splits only (5,446 clips, about 907 per
+class, with no speaker in common), so a vocal-sound classifier trained on VocalSound's training
+split can still be evaluated fairly on our output. The other NVV sources are used in full. Each training batch mixes synthetic and untagged utterances at a ratio of XX:XX. We hold out XX speakers, unseen in training, for evaluation. All audio is resampled to XX\,kHz.
 
 \subsection{Training}
 We initialise from the public OmniVoice checkpoint (k2-fsa/OmniVoice) and fine-tune
@@ -127,27 +346,126 @@ We compare against
 (ii)~OmniVoice fine-tuned on ViVoice alone, without NVV data, which isolates the effect of
 the NVV data from in-domain Vietnamese adaptation;
 
-\subsection{Evaluation}
-The test set contains XX sentences written for evaluation, each with one NVV tag, giving XX
-sentences per class. Each sentence is synthesised for XX held-out speakers, prompted with
-a XX\,s reference utterance.
+\subsection{Evaluation}\label{sec:eval}
+\textbf{Test set.} The test set has 420 real Vietnamese sentences, 30 per class, each with one
+tag. Each sentence is chosen so that the tag fits its content, e.g.\ ``\viet{bật cười}'' (burst
+out laughing) for laughter, ``\viet{hoảng hốt}'' (startled) for gasp, ``\viet{ngủ say}'' (sound
+asleep) for snoring, and ``\viet{hạt tiêu}'' (pepper) or ``\viet{trời rét}'' (bitter cold) for
+sneeze. The tag sits where the sound would naturally occur, after the action word or at a
+comma. About 65\% of tags are mid-sentence; throat clearing and breathing lean towards the start
+of the sentence, and snoring and sniffing towards the end. A few sentences were lightly edited
+to fix spelling or cut a garbled ending. Sentences are 8--30 words long (median 16),
+with no digits and almost no English words, so the WER below is not inflated by the ASR
+writing out numbers or mishearing foreign words. Each sentence is synthesised once for each of
+XX held-out speakers, prompted with a XX\,s reference recording and its transcript, giving XX
+items per system.
+% CHECK: the local ../Para/eval/nvv_test_vi.jsonl (2026-10-13 22:53) does not match this
+% paragraph: its sources are Common Voice 195, OmniVoice MiniMax-24 100, OmniVoice FLEURS-102
+% 100, FLEURS 23, vinv-tts 2 (no ViVoice); 92 rows edited; 7-48 words (median 14); 21 rows
+% with digits; breathing has no start-of-sentence tags. Update the local copy, then recount.
+% TODO: if test sentences come from ViVoice transcripts, confirm they are excluded from the
+% fine-tuning data (both the untagged ViVoice rows and the synthetic NVV rows), and say so.
 
-\textbf{Objective.} 
-NV Placement Accuracy (NVPA): Measures whether the required non-verbal vocalizations are correctly realized at their intended positions in the synthesized speech. An NV event is considered correctly realized only when the required NV type is present at the intended position. Range: 0 to 1, where higher is better.
+\textbf{Synthesis.} Every system uses OmniVoice's voice-cloning inference with the language set
+to Vietnamese, and the same item gets the same random seed in every system. The released
+inference code tokenises an inline tag apart from the text around it, whereas training
+tokenises the whole string, so a model can miss or garble tags it has learned. We therefore
+tokenise the whole string at inference for every system, the released model included, so that
+all systems receive the same input.
 
-Speech Naturalness (SN): Measures the overall naturalness, fluency, and human-likeness of the synthesized speech, including the speech surrounding the non-verbal vocalizations. Scale: 1 to 5, where higher is better.
+\textbf{Objective metrics.} NVPA, WER and SS follow Track~A of the VLSP~2026 NVV TTS
+task.% TODO cite
+\ Each metric is reported on its own, as the mean over all items of a system unless stated
+otherwise; no combined score is computed. Higher is better for every metric except NVMR and WER.
+% TODO cite FlexSED, ECAPA-TDNN, Zipformer.
 
-Quality (Q): Measures the overall perceptual quality of the synthesized audio, including audible artifacts, distortions, noise, and other audio degradations. Scale: 1 to 5, where higher is better.
+\emph{NV placement accuracy (NVPA)} checks whether a vocalization of the tagged class occurs
+where the tag sits in the text. The tag is removed and the remaining words are force-aligned to
+the 16\,kHz output with a Vietnamese wav2vec2 CTC model
+(\nolinkurl{nguyenvulebinh/wav2vec2-base-vietnamese-250h}) and torchaudio's
+\texttt{forced\_align}. Each word boundary is a slot, and the tag sits at one of them.
+Qwen3-ForcedAligner is not used here: besides stretching words over non-verbal sounds
+(\S\ref{sec:data}), on Vietnamese it collapses runs of words to one instant. FlexSED then scores
+each class prompt over the whole recording, in 10\,s windows with a 5\,s hop, and each frame
+keeps its highest posterior across windows. A class's events are runs of frames above 0.2 that
+reach the class threshold at least once. The threshold is 0.5 for most classes, 0.4 for throat
+clearing, and 0.7 for breathing, which FlexSED also scores at 0.5--0.7 on pauses where no
+breath is heard. Runs less than 0.12\,s apart are merged, events shorter than 0.08\,s are
+dropped, and events shorter than 0.25\,s that touch either end of the clip are ignored as
+cut-off tails. A tag is \emph{correct} if an event of its class lies within 3\,s of its slot
+with no aligned word in between; a word that overlaps the event by at most 0.05\,s does not
+count as in between. Otherwise the tag is \emph{misplaced} if exactly one word separates the
+nearest event of its class from the slot, \emph{wrong class} if only another class fires at the
+slot, and \emph{missed} if no event of any class is at the slot. Classes are scored strictly: a
+sigh, pant or gasp also triggers FlexSED's breathing prompt, but counts as correct only when its
+own class fires. NVPA is the share of correct tags (0--1).
+% NOTE (../Para/eval/METRICS.md): the thresholds for laughter, throat clearing, sniff and
+% breathing were set by listening; the 0.5 of the other ten classes is a placeholder. Calibrate
+% them before reporting per-tag NVPA for those classes.
 
-Word Error Rate (WER): Evaluates the intelligibility and content accuracy of the synthesized speech by comparing the recognized speech with the input transcript using a pretrained ASR model (Zipformer). Non-verbal tags are excluded from WER computation. Range: 0 to 1, where lower is better.
+\emph{NV miss rate (NVMR)} is the share of missed tags (0--1): the model made no sound at the
+tag, either skipping it or reading it out as words. NVPA counts a missing, a misplaced and a
+wrong-class event alike as failures; NVMR isolates the first.
 
-Predicted MOS (pMOS): Measures the predicted perceptual quality and naturalness of the synthesized speech using an automatic MOS prediction model (DNSMOS). Scale: 1 to 5, where higher is better.
+\emph{Word error rate (WER)} is computed with a Vietnamese Zipformer
+(\nolinkurl{sherpa-onnx-zipformer-vi-2025-04-20}) using greedy search on the 16\,kHz output.
+The reference and the transcript are normalised alike: tags are removed, the text is put in
+Unicode NFC and lower-cased, and every character other than a letter or digit becomes a space.
+WER is computed at corpus level over all items of a system, not as a mean of per-item WERs,
+and reported in percent.
 
-Speaker Similarity (SS): Measures the similarity between the target/reference speaker and the synthesized speech using a pretrained speaker recognition model (ECAPA-TDNN). Range: 0 to 1, where higher is better.
+\emph{Speaker similarity (SS)} is the cosine between the ECAPA-TDNN embeddings
+(\nolinkurl{speechbrain/spkrec-ecapa-voxceleb}) of the output and of the speaker's reference
+recording, both at 16\,kHz and L2-normalised (0--1 in practice).
 
-\textbf{Subjective.} XX native Vietnamese listeners rate XX samples per system on
-naturalness (MOS, 1--5) and on whether the vocalisation sounds natural at its position
-(NVV-MOS, 1--5). We report means with 95\% confidence intervals.
+\textbf{Subjective metric.} The only subjective metric is MOS. XX native Vietnamese listeners
+each hear one sample at a time and rate its overall quality on a five-point scale (1 = bad,
+5 = excellent). Each system contributes XX samples, and we report the mean MOS with a 95\%
+confidence interval.
+% TODO: say how samples are assigned to listeners and ordered, and whether system identity is
+% hidden from them.
+
+\section{Results}\label{sec:results}
+Table~\ref{tab:main} compares the released OmniVoice with the two fine-tuned systems. For
+context, its upper block lists the results that [CITE] report for Vietnamese TTS systems on
+their own test set.
+
+\begin{table}[H]
+\caption{Released and fine-tuned OmniVoice on Vietnamese NVV synthesis. \emph{Shared}:
+\texttt{[laughter]} and \texttt{[sigh]}, the two classes the released model has a tag for;
+\emph{New}: the other 12 classes of Table~\ref{tab:nvv}. Every system gets the same tagged
+input, so for the new classes the released model sees tags it was never trained on. MOS, WER
+(\%) and SS are over all test sentences; MOS is given with its 95\% confidence interval.
+$^\dagger$Reported by [CITE] on their own Vietnamese test set, ASR model, speaker model (SIM-o)
+and listening test; these systems have no NVV tags, and their numbers are not directly
+comparable with ours.}
+\label{tab:main}
+\centering
+\small
+\begin{tabular}{lrrrrrrr}
+\toprule
+ & \multicolumn{2}{c}{NVMR $\downarrow$} & \multicolumn{2}{c}{NVPA $\uparrow$} & & & \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+System & Shared & New & Shared & New & MOS $\uparrow$ & WER $\downarrow$ & SS $\uparrow$ \\
+\midrule
+viXTTS$^\dagger$                                 & -- & -- & -- & -- & 2.51 & 3.27 & 0.7021 \\
+F5-TTS$^\dagger$                                 & -- & -- & -- & -- & 3.93 & 3.02 & 0.8196 \\
+VietVoice-TTS$^\dagger$                          & -- & -- & -- & -- & 3.58 & 2.37 & 0.7834 \\
+VieNeu-TTS$^\dagger$                             & -- & -- & -- & -- & 3.69 & 2.00 & 0.6524 \\
+F5-TTS Phoneme$^\dagger$                         & -- & -- & -- & -- & 4.06 & 2.51 & 0.8093 \\
+\quad + caching ($\delta{=}0.2$)$^\dagger$       & -- & -- & -- & -- & 3.82 & 2.98 & 0.8042 \\
+% TODO: replace [CITE] in the caption with the source paper of these six rows.
+\midrule
+OmniVoice (released)         & & & & & XX{\scriptsize$\pm$XX} & XX & XX \\
+\quad + ViVoice              & & & & & XX{\scriptsize$\pm$XX} & XX & XX \\
+\quad + ViVoice + NVV (ours) & & & & & XX{\scriptsize$\pm$XX} & XX & XX \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\bibliography{iclr2025_conference}
+\bibliographystyle{iclr2025_conference}
+
 \appendix
 \section{Appendix}
 You may include other additional sections here.
