@@ -106,8 +106,9 @@ pauses where an NVV could go and only then let a model choose among them. Placin
 and aligning it afterwards fails on connected speech, where the boundary between two words is
 usually continuous voicing. A voice activity detector finds the pauses, a forced aligner finds
 the word boundaries, and a pause that falls between two words becomes a \emph{slot}. The slots
-are marked with numbered markers in the transcript (e.g.\ ``\ldots\ strategy, <1> that is <2>
-like so \ldots'', glossed from Vietnamese).
+are marked with numbered markers in the transcript, e.g.\
+``\viet{\ldots\ chứ thôi , <1> để nó lành thôi \ldots\ <2> nhưng mà \ldots}'' in
+Figure~\ref{fig:overview}a.
 
 \item \textbf{Tag selection.} An omni-modal LLM listens to the recording, reads the marked
 transcript, and picks the one slot where a non-verbal sound would most plausibly occur,
@@ -195,9 +196,10 @@ trained on VocalSound's training split can still be evaluated fairly on our outp
 NVV sources are used in full. We hold out XX speakers, unseen in training, for evaluation. All
 audio is resampled to XX\,kHz.
 
-\begin{table}[t]
-\caption{Synthetic NVV training set per tag, after quality filtering. Each utterance carries
-one event. Hours are the total duration of the finished utterances.}
+\begin{table}[H]
+\caption{Synthetic NVV training set per tag, after quality filtering. Left: the six VocalSound
+classes; right: the eight added classes. Each utterance carries one event. Hours are the total
+duration of the finished utterances.}
 \label{tab:synth}
 \centering
 \input{tables/synth_train}
@@ -211,10 +213,22 @@ decay, for XX steps with a batch of XX\,s of audio per GPU, in bf16. Training ta
 on NVIDIA B200. The training objective is unchanged from OmniVoice. We select the final checkpoint.
 
 \subsection{Baselines}
-We compare against
-(i)~OmniVoice without fine-tuning, given the same tagged input;
-(ii)~OmniVoice fine-tuned on ViVoice alone, without NVV data, which isolates the effect of
-the NVV data from in-domain Vietnamese adaptation.
+We evaluate two tasks, each with its own baselines.
+\begin{itemize}
+\item \textbf{Zero-shot TTS.} The input is plain Vietnamese text without tags, spoken in a voice
+cloned from a reference recording. This task checks that fine-tuning for NVVs keeps ordinary
+Vietnamese synthesis intact. The baselines are the released OmniVoice and four Vietnamese TTS
+systems, viXTTS, F5-TTS, VietVoice-TTS and VieNeu-TTS, for which we use the results reported
+by [CITE] (Table~\ref{tab:zeroshot}).% TODO cite viXTTS, F5-TTS, VietVoice-TTS, VieNeu-TTS
+\item \textbf{NVV synthesis.} The input is tagged Vietnamese text from the test set of
+\S\ref{sec:eval}, and each tag must become the matching vocalization at its position. The
+baseline is the released OmniVoice, given the same tagged input as our model
+(Table~\ref{tab:para}). The four Vietnamese TTS systems have no NVV tags, so they are not
+compared on this task.
+\end{itemize}
+% Planned baseline, not yet run: OmniVoice fine-tuned on ViVoice alone, without NVV data, which
+% isolates the effect of the NVV data from in-domain Vietnamese adaptation. Add it to
+% Table~\ref{tab:para} and to this list once it has results.
 
 \subsection{Evaluation}\label{sec:eval}
 \textbf{Test set.} The test set has 420 real Vietnamese sentences, 30 per class, each with one
@@ -335,7 +349,7 @@ word in it, so no speech overlaps it; (iv)~its length is within a per-class rang
 noise floor is at least 6\,dB; and (vi)~at most 0.1\% of its samples are clipped.
 Table~\ref{tab:nvv} lists the resulting 14 classes.
 
-\begin{table}[t]
+\begin{table}[H]
 \caption{NVV clip pool per tag. \emph{Temporary}: counted on the local build of the clip
 index, which holds the full VocalSound corpus and a partial NVS-38K run; regenerate from the
 server's index before submission. Hours are the summed clip durations.}
