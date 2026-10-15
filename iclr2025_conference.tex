@@ -197,9 +197,8 @@ NVV sources are used in full. We hold out XX speakers, unseen in training, for e
 audio is resampled to XX\,kHz.
 
 \begin{table}[H]
-\caption{Synthetic NVV training set per tag, after quality filtering. Left: the six VocalSound
-classes; right: the eight added classes. Each utterance carries one event. Hours are the total
-duration of the finished utterances.}
+\caption{Synthetic NVV training set per tag, after quality filtering. Each utterance carries
+one event. Hours are the total duration of the finished utterances.}
 \label{tab:synth}
 \centering
 \input{tables/synth_train}
@@ -249,8 +248,8 @@ all systems receive the same input.
 \textbf{Objective metrics.} NVPA, WER and SS follow Track~A of the VLSP~2026 NVV TTS
 task.% TODO cite
 \ Each metric is reported on its own, as the mean over all items of a system unless stated
-otherwise; no combined score is computed. Higher is better for every metric except NVMR, WER
-and RTF.
+otherwise; no combined score is computed. Each item below gives the metric's range and which
+direction is better.
 Appendix~\ref{app:metrics} gives the full procedures and model versions.
 % TODO cite FlexSED, ECAPA-TDNN, Zipformer.
 
@@ -258,25 +257,29 @@ Appendix~\ref{app:metrics} gives the full procedures and model versions.
 \item \textbf{NV placement accuracy (NVPA)} measures whether the tagged vocalization is produced where
 the tag sits. A sound event detector (FlexSED) finds the vocalizations in the output, and a
 Vietnamese CTC forced aligner places the tag among the spoken words; a tag counts as correct
-when a vocalization of its class is found at its position. NVPA is the share of correct tags
-(0--1).
+when a vocalization of its class is found at its position. NVPA is the share of correct tags.
+Range 0--1, higher is better; 1 means every tag became the right sound in the right place.
 \item \textbf{NV miss rate (NVMR)} is the share of tags at which no vocalization of any class is found:
-the model skipped the tag or read it out as words (0--1). NVPA also counts a wrong or misplaced
-vocalization as a failure; NVMR isolates the tags that were ignored.
+the model skipped the tag or read it out as words. NVPA also counts a wrong or misplaced
+vocalization as a failure; NVMR isolates the tags that were ignored. Range 0--1, lower is better;
+0 means no tag was ignored.
 \item \textbf{Word error rate (WER)} measures intelligibility: a Vietnamese ASR model (Zipformer)
 transcribes the output, and its transcript is compared with the input text, tags removed. It is
-reported in percent.
+the share of words substituted, deleted or inserted, in percent. Range 0\% upwards (it can pass
+100\% when many words are inserted), lower is better; 0\% means every word was recognised.
 \item \textbf{Speaker similarity (SS)} measures how well the voice is cloned: the cosine between the
 speaker embeddings (ECAPA-TDNN) of the output and of the reference recording used as the
-prompt.
+prompt. Range $-1$ to 1, in practice 0--1, higher is better; values near 1 mean the output
+sounds like the reference speaker.
 \item \textbf{Real-time factor (RTF)} measures synthesis speed: the time taken to synthesise an
 utterance divided by the duration of the audio produced, on one NVIDIA XX GPU with a batch
-of one.
+of one. Range above 0, lower is better; below 1 is faster than real time, e.g.\ an RTF of 0.5
+produces 10\,s of speech in 5\,s.
 \end{itemize}
 
 \textbf{Subjective metric.} The only subjective metric is MOS. XX native Vietnamese listeners
 each hear one sample at a time and rate its overall quality on a five-point scale (1 = bad,
-5 = excellent). Each system contributes XX samples, and we report the mean MOS with a 95\%
+5 = excellent); higher is better. Each system contributes XX samples, and we report the mean MOS with a 95\%
 confidence interval.
 % TODO: say how samples are assigned to listeners and ordered, and whether system identity is
 % hidden from them.

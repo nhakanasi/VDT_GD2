@@ -1,24 +1,22 @@
 % Synthetic NVV training set per tag (Table~\ref{tab:synth}). The paper includes it with
 % \input{tables/synth_train} inside a table environment that holds the caption and label.
 % Preview: pdflatex synth_train_preview.tex (in this directory).
-% Two blocks side by side to keep the table short: the six VocalSound classes on the left, the
-% eight added classes on the right.
+% The 14 tags are split 7 and 7 over two blocks side by side to keep the table short.
 \small
 % Fill from the exported manifest (para-synth export): group rows by the [tag] in `text`,
 % count them and sum `duration`, which is re-measured after splicing.
-\begin{tabular}{lrrclrr}
+\begin{tabular}{lrr|lrr}
 \toprule
-Tag & Utterances & Hours & & Tag & Utterances & Hours \\
-\cmidrule(lr){1-3}\cmidrule(lr){5-7}
-\texttt{laughter}       & XX & XX & & \texttt{breathing} & XX & XX \\
-\texttt{sigh}           & XX & XX & & \texttt{screaming} & XX & XX \\
-\texttt{cough}          & XX & XX & & \texttt{gasp}      & XX & XX \\
-\texttt{throatclearing} & XX & XX & & \texttt{snoring}   & XX & XX \\
-\texttt{sneeze}         & XX & XX & & \texttt{crying}    & XX & XX \\
-\texttt{sniff}          & XX & XX & & \texttt{yawn}      & XX & XX \\
-                        &    &    & & \texttt{moan}      & XX & XX \\
-                        &    &    & & \texttt{pant}      & XX & XX \\
+Tag & Utterances & Hours & Tag & Utterances & Hours \\
 \midrule
-Total                   & XX & XX & & & & \\
+\texttt{laughter}       & XX & XX & \texttt{screaming} & XX & XX \\
+\texttt{sigh}           & XX & XX & \texttt{gasp}      & XX & XX \\
+\texttt{cough}          & XX & XX & \texttt{snoring}   & XX & XX \\
+\texttt{throatclearing} & XX & XX & \texttt{crying}    & XX & XX \\
+\texttt{sneeze}         & XX & XX & \texttt{yawn}      & XX & XX \\
+\texttt{sniff}          & XX & XX & \texttt{moan}      & XX & XX \\
+\texttt{breathing}      & XX & XX & \texttt{pant}      & XX & XX \\
+\midrule
+\multicolumn{4}{l}{Total} & XX & XX \\
 \bottomrule
 \end{tabular}
