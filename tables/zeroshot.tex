@@ -1,0 +1,19 @@
+% Zero-shot Vietnamese TTS table body (Table~\ref{tab:zeroshot}). The paper includes it with
+% \input{tables/zeroshot} inside a table environment that holds the caption and label.
+% Preview: pdflatex zeroshot_preview.tex (in this directory).
+% The first four rows, RTF included, are as reported by [CITE]. RTF depends on the hardware:
+% measure ours on the same GPU as [CITE], or the RTF column does not compare.
+\small
+\begin{tabular}{lrrrr}
+\toprule
+System & MOS $\uparrow$ & WER $\downarrow$ & SS $\uparrow$ & RTF $\downarrow$ \\
+\midrule
+viXTTS                       & 2.51 & 3.27 & 0.7021 & 0.67 \\
+F5-TTS                       & 3.93 & 3.02 & 0.8196 & 0.47 \\
+VietVoice-TTS                & 3.58 & 2.37 & 0.7834 & 0.47 \\
+VieNeu-TTS                   & 3.69 & 2.00 & 0.6524 & 0.89 \\
+\midrule
+OmniVoice (released)         & XX{\scriptsize$\pm$XX} & XX & XX & XX \\
+OmniVoice fine-tuned (ours)  & XX{\scriptsize$\pm$XX} & XX & XX & XX \\
+\bottomrule
+\end{tabular}

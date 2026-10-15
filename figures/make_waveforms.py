@@ -26,8 +26,9 @@ WINDOW_S = (8.6, 13.2)
 # Three laughter clips shown as selection candidates; the first is the one picked for ROW.
 CANDIDATES = [ROW, "ZTdhpdp4Avk_00164", "YK4u38DDlJY_00066"]
 
-SPEECH = "#3B6EA5"
-EVENT = "#C55A11"
+# Keep in step with the colours defined in overview.tex.
+SPEECH = "#2B2B2B"
+EVENT = "#C62828"
 FOREIGN = "#8C8C8C"
 CM = 1 / 2.54
 

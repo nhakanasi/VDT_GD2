@@ -2,29 +2,34 @@
 % \input{tables/nvv_clips} inside a table environment that holds the caption and label.
 % Preview: pdflatex nvv_clips_preview.tex (in this directory).
 \small
-% Counted from ../Para/data/vocalsound/vocalsound_all.jsonl (built 2026-10-09). On the server, VS
-% is test+val only (5,446 clips, about 907 per class), so the VS rows shrink to about 26% of the
-% clips and hours shown here.
-\begin{tabular}{llrr}
+% Counted from ../Para/data/vocalsound/vocalsound_all.jsonl (built 2026-10-09). On the server,
+% VocalSound is test+val only (5,446 clips, about 907 per class), so the first six rows shrink to
+% about 26% of the clips and hours shown here.
+% Clips per source (VS = VocalSound, DNV = Deeply Nonverbal Vocalization, FSD = FSD50K,
+% NVS = NVS-38K): laughter VS 3,498 DNV 25; sigh VS 3,498 DNV 51; cough VS 3,497 DNV 50;
+% throatclearing VS 3,497 DNV 54; sneeze VS 3,496 DNV 52; sniff VS 3,499; breathing FSD 324
+% NVS 55; screaming FSD 233 DNV 51; gasp FSD 147 NVS 17; snoring FSD 161 NVS 2; crying FSD 83
+% DNV 24 NVS 11; yawn DNV 48 FSD 22 NVS 2; moan DNV 45 FSD 23; pant DNV 44 FSD 11.
+\begin{tabular}{lrr}
 \toprule
-Tag & Sources (clips) & Clips & Hours \\
+Tag & Clips & Hours \\
 \midrule
-\texttt{laughter}       & VS 3,498; DNV 25          & 3,523  & 4.16 \\
-\texttt{sigh}           & VS 3,498; DNV 51          & 3,549  & 4.48 \\
-\texttt{cough}          & VS 3,497; DNV 50          & 3,547  & 4.49 \\
-\texttt{throatclearing} & VS 3,497; DNV 54          & 3,551  & 3.78 \\
-\texttt{sneeze}         & VS 3,496; DNV 52          & 3,548  & 3.78 \\
-\texttt{sniff}          & VS 3,499                  & 3,499  & 3.88 \\
+\texttt{laughter}       & 3,523  & 4.16 \\
+\texttt{sigh}           & 3,549  & 4.48 \\
+\texttt{cough}          & 3,547  & 4.49 \\
+\texttt{throatclearing} & 3,551  & 3.78 \\
+\texttt{sneeze}         & 3,548  & 3.78 \\
+\texttt{sniff}          & 3,499  & 3.88 \\
 \midrule
-\texttt{breathing}      & FSD 324; NVS 55           & 379    & 0.11 \\
-\texttt{screaming}      & FSD 233; DNV 51           & 284    & 0.14 \\
-\texttt{gasp}           & FSD 147; NVS 17           & 164    & 0.03 \\
-\texttt{snoring}        & FSD 161; NVS 2            & 163    & 0.08 \\
-\texttt{crying}         & FSD 83; DNV 24; NVS 11    & 118    & 0.07 \\
-\texttt{yawn}           & DNV 48; FSD 22; NVS 2     & 72     & 0.05 \\
-\texttt{moan}           & DNV 45; FSD 23            & 68     & 0.05 \\
-\texttt{pant}           & DNV 44; FSD 11            & 55     & 0.04 \\
+\texttt{breathing}      & 379    & 0.11 \\
+\texttt{screaming}      & 284    & 0.14 \\
+\texttt{gasp}           & 164    & 0.03 \\
+\texttt{snoring}        & 163    & 0.08 \\
+\texttt{crying}         & 118    & 0.07 \\
+\texttt{yawn}           & 72     & 0.05 \\
+\texttt{moan}           & 68     & 0.05 \\
+\texttt{pant}           & 55     & 0.04 \\
 \midrule
-Total                   &                           & 22,520 & 25.12 \\
+Total                   & 22,520 & 25.12 \\
 \bottomrule
 \end{tabular}
