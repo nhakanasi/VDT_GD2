@@ -2,34 +2,37 @@
 % \input{tables/nvv_clips} inside a table environment that holds the caption and label.
 % Preview: pdflatex nvv_clips_preview.tex (in this directory).
 \small
-% Counted from ../Para/data/vocalsound/vocalsound_all.jsonl (built 2026-10-09). On the server,
-% VocalSound is test+val only (5,446 clips, about 907 per class), so the first six rows shrink to
-% about 26% of the clips and hours shown here.
-% Clips per source (VS = VocalSound, DNV = Deeply Nonverbal Vocalization, FSD = FSD50K,
-% NVS = NVS-38K): laughter VS 3,498 DNV 25; sigh VS 3,498 DNV 51; cough VS 3,497 DNV 50;
-% throatclearing VS 3,497 DNV 54; sneeze VS 3,496 DNV 52; sniff VS 3,499; breathing FSD 324
-% NVS 55; screaming FSD 233 DNV 51; gasp FSD 147 NVS 17; snoring FSD 161 NVS 2; crying FSD 83
-% DNV 24 NVS 11; yawn DNV 48 FSD 22 NVS 2; moan DNV 45 FSD 23; pant DNV 44 FSD 11.
+% Counted from the server's clip index (../Para/scripts/table_nvv_clips.py). VocalSound is
+% test+val only (5,446 clips). Clips per source: VocalSound 5,446, Nonspeech7k 4,773,
+% NVS-38K 1,520, FSD50K 1,426.
+% Clips per source (VS = VocalSound, FSD = FSD50K, NVS = NVS-38K, NS7K = Nonspeech7k):
+% laughter VS 909; sigh VS 907; cough VS 907; throatclearing VS 907; sneeze VS 907; sniff VS 909;
+% breathing NS7K 1,850 NVS 1,022 FSD 324; crying NS7K 1,996 NVS 209 FSD 83; screaming NS7K 663
+% FSD 233; gasp NVS 217 FSD 147; burp FSD 316; yawn NS7K 264 NVS 23 FSD 22; snoring FSD 161
+% NVS 49; grunt FSD 69; yell FSD 37; moan FSD 23; pant FSD 11.
 \begin{tabular}{lrr}
 \toprule
 Tag & Clips & Hours \\
 \midrule
-\texttt{laughter}       & 3,523  & 4.16 \\
-\texttt{sigh}           & 3,549  & 4.48 \\
-\texttt{cough}          & 3,547  & 4.49 \\
-\texttt{throatclearing} & 3,551  & 3.78 \\
-\texttt{sneeze}         & 3,548  & 3.78 \\
-\texttt{sniff}          & 3,499  & 3.88 \\
+\texttt{laughter}       & 909    & 1.07 \\
+\texttt{sigh}           & 907    & 1.15 \\
+\texttt{cough}          & 907    & 1.15 \\
+\texttt{throatclearing} & 907    & 0.97 \\
+\texttt{sneeze}         & 907    & 0.98 \\
+\texttt{sniff}          & 909    & 1.02 \\
 \midrule
-\texttt{breathing}      & 379    & 0.11 \\
-\texttt{screaming}      & 284    & 0.14 \\
-\texttt{gasp}           & 164    & 0.03 \\
-\texttt{snoring}        & 163    & 0.08 \\
-\texttt{crying}         & 118    & 0.07 \\
-\texttt{yawn}           & 72     & 0.05 \\
-\texttt{moan}           & 68     & 0.05 \\
-\texttt{pant}           & 55     & 0.04 \\
+\texttt{breathing}      & 3,196  & 2.28 \\
+\texttt{crying}         & 2,288  & 2.18 \\
+\texttt{screaming}      & 896    & 0.71 \\
+\texttt{gasp}           & 364    & 0.06 \\
+\texttt{burp}           & 316    & 0.09 \\
+\texttt{yawn}           & 309    & 0.20 \\
+\texttt{snoring}        & 210    & 0.09 \\
+\texttt{grunt}          & 69     & 0.01 \\
+\texttt{yell}           & 37     & 0.01 \\
+\texttt{moan}           & 23     & 0.01 \\
+\texttt{pant}           & 11     & 0.00 \\
 \midrule
-Total                   & 22,520 & 25.12 \\
+Total                   & 13,165 & 11.96 \\
 \bottomrule
 \end{tabular}

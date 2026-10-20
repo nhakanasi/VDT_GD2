@@ -1,22 +1,26 @@
 % Synthetic NVV training set per tag (Table~\ref{tab:synth}). The paper includes it with
 % \input{tables/synth_train} inside a table environment that holds the caption and label.
 % Preview: pdflatex synth_train_preview.tex (in this directory).
-% The 14 tags are split 7 and 7 over two blocks side by side to keep the table short.
+% The 17 tags are split 9 and 8 over two blocks side by side to keep the table short.
 \small
-% Fill from the exported manifest (para-synth export): group rows by the [tag] in `text`,
-% count them and sum `duration`, which is re-measured after splicing.
+% From train_balance.jsonl (table_synth_train.py): 224,066 rows, all 22.05 kHz, language vi.
+% Two malformed rows are left out: one tagged [improve] and one with two tags
+% ("screaming + d"), 0.01 h together. The manifest spells breathing as [breath]; it is the same
+% class, shown here as breathing to match the other tables.
 \begin{tabular}{lrr|lrr}
 \toprule
 Tag & Utterances & Hours & Tag & Utterances & Hours \\
 \midrule
-\texttt{laughter}       & XX & XX & \texttt{screaming} & XX & XX \\
-\texttt{sigh}           & XX & XX & \texttt{gasp}      & XX & XX \\
-\texttt{cough}          & XX & XX & \texttt{snoring}   & XX & XX \\
-\texttt{throatclearing} & XX & XX & \texttt{crying}    & XX & XX \\
-\texttt{sneeze}         & XX & XX & \texttt{yawn}      & XX & XX \\
-\texttt{sniff}          & XX & XX & \texttt{moan}      & XX & XX \\
-\texttt{breathing}      & XX & XX & \texttt{pant}      & XX & XX \\
+\texttt{laughter}       & 13,450 & 55.20 & \texttt{grunt}     & 13,442 & 44.11 \\
+\texttt{sigh}           & 13,455 & 52.46 & \texttt{burp}      & 13,435 & 41.82 \\
+\texttt{cough}          & 13,440 & 49.20 & \texttt{yawn}      & 13,433 & 50.59 \\
+\texttt{throatclearing} & 13,441 & 48.69 & \texttt{crying}    & 13,433 & 51.01 \\
+\texttt{sneeze}         & 13,435 & 49.55 & \texttt{pant}      & 13,432 & 49.94 \\
+\texttt{sniff}          & 13,522 & 51.70 & \texttt{yell}      & 13,400 & 45.33 \\
+\texttt{breathing}      & 13,452 & 47.69 & \texttt{screaming} & 12,212 & 49.42 \\
+\texttt{gasp}           & 13,449 & 45.10 & \texttt{snoring}   & 10,190 & 31.69 \\
+\texttt{moan}           & 13,443 & 47.33 & & & \\
 \midrule
-\multicolumn{4}{l}{Total} & XX & XX \\
+\multicolumn{4}{l}{Total} & 224,064 & 810.82 \\
 \bottomrule
 \end{tabular}

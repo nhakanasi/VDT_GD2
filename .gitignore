@@ -14,3 +14,6 @@
 *.nav
 *.snm
 *.xdv
+
+# OmniVoice eval data (reference voices of eval/nvv_test_vi.jsonl), downloaded locally
+download/
