@@ -76,80 +76,66 @@ conversation.
 
 \section{Introduction}\label{sec:intro}
 When people talk, they communicate with more than words. A short laugh, a sigh, a breath before
-a long sentence, or a hesitant ``\viet{ừm}\ldots'' tells the listener how the speaker feels and
-what they mean. These sounds are called paralinguistic or non-verbal cues; in this report we call
-them non-verbal vocalizations (NVVs). They are a natural part of everyday conversation, and
-speech without them sounds flat and robotic, even when every word is pronounced correctly.
+a long sentence or a hesitant ``\viet{ừm}\ldots'' tells the listener how the speaker feels and
+what they mean. These paralinguistic, or non-verbal, cues, which we call non-verbal
+vocalizations (NVVs), run through everyday conversation, and speech without them sounds flat and
+mechanical even when every word is pronounced correctly.
 
-Text-to-speech (TTS) systems turn written text into spoken audio. Modern TTS can already read
-text clearly in many different voices, and some recent systems also let users place simple tags
-in the text, for example ``\viet{Thật à [laughter] mình không ngờ luôn}'' (``Really?
-[laughter] I didn't expect that at all''), so that the voice laughs at exactly that point. This
-matters for two growing uses:
-\begin{itemize}
-\item \textbf{Voice assistants and AI agents} that talk with customers in real time. Natural
-reactions make these conversations feel human rather than mechanical.
-\item \textbf{Content creation} such as audiobooks, video voice-overs and podcasts. Expressive
-speech keeps listeners engaged.
-\end{itemize}
+Text-to-speech (TTS) systems turn written text into spoken audio. Modern TTS models read text
+clearly in many voices, and some now let the user place a tag in the text, as in
+``\viet{Thật à [laughter] mình không ngờ luôn}'' (``Really? [laughter] I didn't expect that at
+all''), so that the voice laughs at exactly that point. This control is what makes synthetic
+speech usable where expression matters. A voice agent that answers customers can chuckle at a
+joke or sigh in sympathy at a complaint, instead of meeting both in the same even tone, and
+that small reaction is often what makes a caller feel heard rather than processed. An
+audiobook, a dubbed video or a podcast can let its narrator gasp, laugh or catch a breath where
+the script calls for it, which holds a listener's attention far better than a steady,
+unbroken read.
 
-\textbf{Problem.} For Vietnamese, this capability does not exist yet. We need a TTS system that,
-given a Vietnamese sentence with a tag such as \texttt{[cough]}, makes that sound at that point
-in the sentence, in the chosen voice, as naturally as a person would. To our knowledge, no
-available system can do this, for two reasons:
-\begin{itemize}
-\item \textbf{Current systems do not handle it.} Systems that accept such tags are built mainly
-for other languages. Fish Audio's open model, OpenAudio S1~\citep{openaudios1}, offers markers
-such as \texttt{(laughing)} and \texttt{(sighing)} in 13 languages, but Vietnamese is not one of
-them. OmniVoice~\citep{omnivoice} does speak Vietnamese, but its tags were learned from Chinese
-and English data, and in Vietnamese it often ignores them, reads them out as words, or produces
-broken audio around them: in our tests on Vietnamese sentences, the released OmniVoice made no
+For Vietnamese, this control does not exist yet. What is needed is a TTS system that, given a
+Vietnamese sentence with a tag such as \texttt{[cough]}, makes that sound at that point in the
+sentence, in the chosen voice, as naturally as a person would. To our knowledge, no available
+system can do this. Systems that accept such tags are built mainly for other languages: Fish
+Audio's open model, OpenAudio S1~\citep{openaudios1}, offers markers such as
+\texttt{(laughing)} and \texttt{(sighing)} in 13 languages, none of them Vietnamese.
+OmniVoice~\citep{omnivoice} does speak Vietnamese, but its tags were learned from Chinese and
+English data, and in Vietnamese it often ignores them, reads them out as words or produces
+broken audio around them. In our tests on Vietnamese sentences, the released OmniVoice made no
 sound at all for 64\% of the tags, and the right sound in the right place for only 11.5\%
-(\S\ref{sec:results}).
-\item \textbf{There is no training data.} Teaching a model these sounds requires Vietnamese
-recordings in which each sound is labelled at the right position. To our knowledge, no such
-public dataset exists.
-\end{itemize}
+(\S\ref{sec:results}). The natural remedy, training a model on Vietnamese speech in which each
+sound is labelled at its position, is blocked by a lack of data: to our knowledge, no public
+Vietnamese dataset of this kind exists.
 
-This work addresses both. We start from OmniVoice~\citep{omnivoice}, an open-source TTS model
-that already speaks Vietnamese and runs many times faster than real time, which makes it
-practical to deploy in live conversation.
-Of the sounds we need, it supports only laughter and sigh, so we teach it 15 new tags: cough,
-throat clearing, sneeze, sniff, breathing, gasp, moan, grunt, burp, yawn, crying, pant, yell,
-screaming and snoring. Because no suitable Vietnamese data existed, we built it. We adapt
-SynParaSpeech~\citep{synparaspeech}, a published method that creates such training data
-automatically by inserting recorded sounds into real speech, to Vietnamese, and change how the
-sounds are collected, placed, matched to the speaker, blended in and checked (\S\ref{sec:data}).
-We then fine-tune OmniVoice on this dataset, that is, train it further on our data. The result
-produces each new sound when it sees the matching tag, while keeping the original model's speed
-and speech quality.
+This work closes both gaps. We start from OmniVoice, an open-source TTS model that already
+speaks Vietnamese and runs many times faster than real time, which makes it practical to deploy
+in live conversation. Of the sounds we need, it supports only laughter and sigh, so we teach it
+15 new tags: cough, throat clearing, sneeze, sniff, breathing, gasp, moan, grunt, burp, yawn,
+crying, pant, yell, screaming and snoring. Because no suitable data existed, we build it by
+adapting SynParaSpeech~\citep{synparaspeech}, a published method that creates such data
+automatically by inserting recorded sounds into real speech, to Vietnamese, and we extend it in
+five ways. We collect 17 sound types instead of 6, keeping only clean recordings from several
+public collections. An audio language model listens to each recording and places the tag
+among the speaker's real pauses, where SynParaSpeech uses a text-only model that reads the
+transcript. Each candidate recording of the sound is scored on how well its loudness, recording
+quality and rhythm match the speaker, where SynParaSpeech picks one at random. The inserted
+sound is set to a suitable level and given as much silence as the speaker normally pauses for,
+filled with the recording's own background noise. Finally, every example is scored by an
+automatic quality predictor and dropped if the edit damaged the audio, where SynParaSpeech
+relies on manual review. We then fine-tune OmniVoice on the resulting dataset, that is, train
+it further on our data.
 
-\textbf{What this project delivers.}
+Our contributions are as follows:
 \begin{itemize}
-\item \textbf{A Vietnamese NVV data pipeline.} We adapt SynParaSpeech to Vietnamese and extend
-it in five ways:
-  \begin{itemize}
-  \item \textbf{More sounds:} 17 sound types instead of 6, drawn from a pool of clean recordings
-  gathered from several public collections.
-  \item \textbf{A model that listens:} an audio language model hears the recording and picks the
-  tag and its position among the speaker's real pauses, where SynParaSpeech uses a text-only
-  model that reads the transcript.
-  \item \textbf{Sounds that suit the speaker:} each candidate recording of the sound is scored on
-  how well its loudness, recording quality and rhythm match the speaker, where SynParaSpeech
-  picks one at random.
-  \item \textbf{Natural pauses:} the inserted sound is set to a suitable level and given as much
-  silence as the speaker normally pauses for, filled with the recording's own background noise.
-  \item \textbf{Automatic quality checks:} every example is scored by an automatic quality
-  predictor and dropped if the edit damaged the audio, where SynParaSpeech relies on manual
-  review.
-  \end{itemize}
-\item \textbf{A Vietnamese NVV dataset.} It contains about 811 hours (224,064 utterances)
-covering 17 sound types, with 10,000 to 13,500 utterances per type and the position of each
-sound labelled in the transcript.
-\item \textbf{A Vietnamese TTS model with new tags.} Our fine-tuned OmniVoice produces the right
-sound at the right place for XX\% of tags, against 11.5\% for the released model. Ordinary
-speech quality is unchanged (WER XX\% against 8.1\%), and it stays fast: its real-time factor, the time taken
-to generate speech divided by the length of that speech, is XX, against XX for XX.
+\item A Vietnamese NVV data pipeline that adapts SynParaSpeech to Vietnamese and extends it with
+a larger sound inventory, audio-aware tag placement, speaker-matched clip selection, natural
+pauses and automatic quality filtering (\S\ref{sec:data}).
+\item A Vietnamese NVV dataset of about 811 hours (224,064 utterances) covering 17 sound types,
+with 10,000 to 13,500 utterances per type and the position of each sound labelled in the
+transcript.
+\item A fine-tuned OmniVoice that makes the right sound at the right place for XX\% of tags,
+against 11.5\% for the released model, while ordinary speech quality is unchanged (WER XX\%
+against 8.1\%) and it stays fast, with a real-time factor (the time taken to generate speech
+divided by the length of that speech) of XX, against XX for XX.
 \end{itemize}
 
 \section{Method}
@@ -168,7 +154,9 @@ gives an overview.
   \caption{Overview. (a) Training-data synthesis on a real example: VAD pauses between
   aligned words become slots; an omni LLM picks one slot and one tag; an NVV clip of
   that class is sampled to match the speaker, converted to the speaker's voice with Seed-VC,
-  spliced into the pause and quality-filtered. (b) OmniVoice is fine-tuned on the synthetic
+  spliced into the pause and quality-filtered. Red step numbers mark the steps we change from
+  SynParaSpeech, and the red outline marks the extended NVV clip pool. (b) OmniVoice is
+  fine-tuned on the synthetic
   data with untagged ViVoice; at inference an inline tag produces the NVV in the cloned voice
   (waveforms in (b) are illustrative).}
   \label{fig:overview}
@@ -284,9 +272,7 @@ Table~\ref{tab:synth} breaks it down by tag. Each training batch mixes synthetic
 utterances at a ratio of XX:XX. VocalSound clips are drawn from its test and validation splits
 only (5,446 clips, about 907 per class, with no speaker in common), so a vocal-sound classifier
 trained on VocalSound's training split can still be evaluated fairly on our output. The other
-NVV sources are used in full. The 7 reference voices used for evaluation are not in the
-training data.% CHECK: confirm none of the 7 reference voices is a ViVoice speaker.
-\ All
+NVV sources are used in full. All
 audio is resampled to XX\,kHz.
 
 \begin{table}[H]
@@ -305,75 +291,76 @@ decay, for XX steps with a batch of XX\,s of audio per GPU, in bf16. Training ta
 on NVIDIA B200. The training objective is unchanged from OmniVoice. We select the final checkpoint.
 
 \subsection{Baselines}
-We evaluate two tasks, each with its own baselines.
-\begin{itemize}
-\item \textbf{Zero-shot TTS.} The input is plain Vietnamese text without tags, spoken in a voice
-cloned from a reference recording. This task checks that fine-tuning for NVVs keeps ordinary
-Vietnamese synthesis intact. The baselines are the released OmniVoice and four Vietnamese TTS
-systems, viXTTS, F5-TTS, VietVoice-TTS and VieNeu-TTS, for which we use the results reported
-by [CITE] (Table~\ref{tab:zeroshot}).% TODO cite viXTTS, F5-TTS, VietVoice-TTS, VieNeu-TTS
-\item \textbf{NVV synthesis.} The input is tagged Vietnamese text from the test set of
-\S\ref{sec:eval}, and each tag must become the matching vocalization at its position. The
-baseline is the released OmniVoice, given the same tagged input as our model
-(Table~\ref{tab:para}). The four Vietnamese TTS systems have no NVV tags, so they are not
-compared on this task.
-\end{itemize}
+We evaluate two tasks. In zero-shot TTS, the input is plain Vietnamese text without tags, spoken
+in a voice cloned from a reference recording; this task checks that fine-tuning for NVVs keeps
+ordinary Vietnamese synthesis intact. Its baselines are the released OmniVoice and four
+Vietnamese TTS systems, viXTTS, F5-TTS, VietVoice-TTS and VieNeu-TTS, for which we use the
+results reported by [CITE] (Table~\ref{tab:zeroshot}).% TODO cite viXTTS, F5-TTS, VietVoice-TTS, VieNeu-TTS
+\ In NVV synthesis, the input is tagged Vietnamese text, and each tag must become the matching
+vocalization at its position. Its baseline is the released OmniVoice, given the same tagged
+input as our model (Table~\ref{tab:para}); the four Vietnamese systems have no NVV tags and are
+not compared on this task. The listening tests (Table~\ref{tab:mos}) cover three systems for
+both tasks: Fish Audio's commercial TTS service, a multilingual system with its own expression
+markers, the released OmniVoice and our fine-tuned model.% TODO: name the Fish Audio model and say how tags reach it
 % Planned baseline, not yet run: OmniVoice fine-tuned on ViVoice alone, without NVV data, which
 % isolates the effect of the NVV data from in-domain Vietnamese adaptation. Add it to
-% Table~\ref{tab:para} and to this list once it has results.
+% Table~\ref{tab:para} and to this subsection once it has results.
 
 \subsection{Evaluation}\label{sec:eval}
-\textbf{Test set.} The test set has 420 real Vietnamese sentences, 30 for each of 14 classes,
-each with one tag; burp, grunt and yell are not tested. Each sentence is chosen so that the tag fits its content, e.g.\ a sentence in which someone
-bursts out laughing for \texttt{[laughter]}, and the tag sits where the sound would naturally
-occur.
-Each sentence is synthesised once with each of 7 reference voices, prompted with a reference
-recording and its transcript, giving 2,940 items per system.
-Appendix~\ref{app:test} describes the sentences in more detail.
+Both tasks use the same 420 real Vietnamese sentences, 30 for each of 14 classes; burp, grunt
+and yell are not tested. Each sentence is chosen so that the tag fits its content, for example
+a sentence in which someone bursts out laughing for \texttt{[laughter]}, and the tag sits where
+the sound would naturally occur (Appendix~\ref{app:test}). Each sentence is synthesised once with
+each of 7 reference voices, prompted with a reference recording and its transcript. None of the
+7 voices appears in the training data, so every result is for a voice the model has never
+heard.% CHECK: confirm none of the 7 reference voices is a ViVoice speaker.
+\ For NVV synthesis each sentence keeps its tag, and for zero-shot TTS the tag is removed, so
+each system produces 2,940 items (420 sentences $\times$ 7 voices) per task. Every objective
+metric is computed over all of them; the listening tests use a subset.
 
-\textbf{Synthesis.} Every system uses OmniVoice's voice-cloning inference with the language set
-to Vietnamese, and the same item gets the same random seed in every system. The released
-inference code tokenises an inline tag apart from the text around it, whereas training
-tokenises the whole string, so a model can miss or garble tags it has learned. We therefore
-tokenise the whole string at inference for every system, the released model included, so that
-all systems receive the same input.
+Every system uses OmniVoice's voice-cloning inference with the language set to Vietnamese, and
+the same item gets the same random seed in every system. The released inference code tokenises
+an inline tag apart from the text around it, whereas training tokenises the whole string, so a
+model can miss or garble tags it has learned. We therefore tokenise the whole string at
+inference for every system, the released model included, so that all systems receive the same
+input.
 
-\textbf{Objective metrics.} NVPA, WER and SS follow Track~A of the VLSP~2026 NVV TTS
-task.% TODO cite
-\ Each metric is reported on its own, as the mean over all items of a system unless stated
-otherwise; no combined score is computed. Each item below gives the metric's range and which
-direction is better.
-Appendix~\ref{app:metrics} gives the full procedures and model versions.
+We report five objective metrics, each on its own as the mean over all items of a system unless
+stated otherwise; no combined score is computed. NVPA, WER and SS follow Track~A of the
+VLSP~2026 NVV TTS task,% TODO cite
+\ and Appendix~\ref{app:metrics} gives the full procedures and model versions.
 % TODO cite FlexSED, ECAPA-TDNN, Zipformer.
 
-\begin{itemize}
-\item \textbf{NV placement accuracy (NVPA)} measures whether the tagged vocalization is produced where
-the tag sits. A sound event detector (FlexSED) finds the vocalizations in the output, and a
-Vietnamese CTC forced aligner places the tag among the spoken words; a tag counts as correct
-when a vocalization of its class is found at its position. NVPA is the share of correct tags.
-Range 0--1, higher is better; 1 means every tag became the right sound in the right place.
-\item \textbf{NV miss rate (NVMR)} is the share of tags at which no vocalization of any class is found:
-the model skipped the tag or read it out as words. NVPA also counts a wrong or misplaced
-vocalization as a failure; NVMR isolates the tags that were ignored. Range 0--1, lower is better;
-0 means no tag was ignored.
-\item \textbf{Word error rate (WER)} measures intelligibility: a Vietnamese ASR model (Zipformer)
-transcribes the output, and its transcript is compared with the input text, tags removed. It is
-the share of words substituted, deleted or inserted, in percent. Range 0\% upwards (it can pass
-100\% when many words are inserted), lower is better; 0\% means every word was recognised.
-\item \textbf{Speaker similarity (SS)} measures how well the voice is cloned: the cosine between the
-speaker embeddings (ECAPA-TDNN) of the output and of the reference recording used as the
-prompt. Range $-1$ to 1, in practice 0--1, higher is better; values near 1 mean the output
-sounds like the reference speaker.
-\item \textbf{Real-time factor (RTF)} measures synthesis speed: the time taken to synthesise an
-utterance divided by the duration of the audio produced, on one NVIDIA RTX 5070 Ti GPU with a
-batch of one, in float16. Range above 0, lower is better; below 1 is faster than real time, e.g.\ an RTF of 0.5
-produces 10\,s of speech in 5\,s.
-\end{itemize}
+NV placement accuracy (NVPA) measures whether the tagged vocalization is produced where the tag
+sits. A sound event detector (FlexSED) finds the vocalizations in the output, and a Vietnamese
+CTC forced aligner places the tag among the spoken words; a tag counts as correct when a
+vocalization of its class is found at its position. NVPA is the share of correct tags, from 0 to
+1, where 1 means every tag became the right sound in the right place. The NV miss rate (NVMR) is
+the share of tags at which no vocalization of any class is found, because the model skipped the
+tag or read it out as words. NVPA also counts a wrong or misplaced vocalization as a failure, so
+NVMR isolates the tags that were ignored; it also runs from 0 to 1, and lower is better.
 
-\textbf{Subjective metric.} The only subjective metric is MOS. XX native Vietnamese listeners
-each hear one sample at a time and rate its overall quality on a five-point scale (1 = bad,
-5 = excellent); higher is better. Each system contributes XX samples, and we report the mean MOS with a 95\%
-confidence interval.
+Word error rate (WER) measures intelligibility: a Vietnamese ASR model (Zipformer) transcribes
+the output, and the transcript is compared with the input text, tags removed. It is the share of
+words substituted, deleted or inserted, in percent; lower is better, 0\% means every word was
+recognised, and it can exceed 100\% when many words are inserted. Speaker similarity (SS)
+measures how well the voice is cloned, as the cosine between the speaker embeddings (ECAPA-TDNN)
+of the output and of the reference recording used as the prompt. It ranges from $-1$ to 1, in
+practice from 0 to 1, and values near 1 mean the output sounds like the reference speaker. The
+real-time factor (RTF) measures speed: the time taken to synthesise an utterance divided by the
+duration of the audio produced, on one NVIDIA A100 GPU (DGX A100). Lower is better, and below 1
+is faster than real time; an RTF of 0.5, for example, produces 10\,s of speech in 5\,s. We report
+the mean over items.
+
+Native Vietnamese listeners rate samples from three systems, Fish Audio, the released OmniVoice
+and our fine-tuned model, on a five-point scale (1 = bad, 5 = excellent; higher is better). Each
+listener hears one sample at a time. For zero-shot TTS they give a single mean opinion score
+(MOS) for overall quality. For NVV synthesis they give three separate scores: quality, how clean
+the audio is, free of noise, distortion and glitches; naturalness, how human the speech sounds,
+including whether the vocalization sounds real and fits where it occurs; and similarity, how
+much the voice sounds like the reference speaker. XX listeners rate XX samples per system and
+task, and we report each score as a mean with its 95\% confidence interval
+(Table~\ref{tab:mos}).
 % TODO: say how samples are assigned to listeners and ordered, and whether system identity is
 % hidden from them.
 
@@ -381,31 +368,62 @@ confidence interval.
 Table~\ref{tab:zeroshot} compares our fine-tuned model with the released OmniVoice and other
 Vietnamese TTS systems on zero-shot synthesis of plain text, without tags; the results for the
 other systems are those that [CITE] report on their own test set. Table~\ref{tab:para} compares
-the released and fine-tuned OmniVoice on NVV synthesis. Given Vietnamese text, the released
+the released and fine-tuned OmniVoice on NVV synthesis, and Table~\ref{tab:mos} gives the
+listening-test scores of both tasks. Given Vietnamese text, the released
 model produces no vocalization at 37\% of the \texttt{[laughter]} and \texttt{[sigh]} tags, the
 two it supports, and at 69\% of the other 12; overall it realises only 11.5\% of tags correctly.
 Even its own two tags behave very differently: it produces a correct laugh for 79\% of
 \texttt{[laughter]} tags but a correct sigh for only 1\% of \texttt{[sigh]} tags.
-% TODO: name the test set behind our rows in Table~\ref{tab:zeroshot}.
 
 \begin{table}[H]
-\caption{Zero-shot Vietnamese TTS on plain text, without NVV tags. WER is in \%; our MOS is
-given with its 95\% confidence interval.}
+\caption{Zero-shot Vietnamese TTS on plain text, without NVV tags. Our rows are over the 2,940
+plain-text items; WER is in \%.}
 \label{tab:zeroshot}
 \centering
 \input{tables/zeroshot}
 \end{table}
 
 \begin{table}[H]
-\caption{Released and fine-tuned OmniVoice on Vietnamese NVV synthesis. \emph{Shared}:
-\texttt{[laughter]} and \texttt{[sigh]}, the two classes the released model has a tag for;
-\emph{New}: the other 12 classes in the test set. Both systems get the same tagged
-input, so for the new classes the released model sees tags it was never trained on. MOS, WER
-(\%) and SS are over all test sentences; MOS is given with its 95\% confidence interval.}
+\caption{Released and fine-tuned OmniVoice on Vietnamese NVV synthesis, over all 2,940 tagged
+items (14 classes). Both systems get the same tagged input, so for 12 of the 14 classes the
+released model sees tags it was never trained on. WER is in \%.}
 \label{tab:para}
 \centering
 \input{tables/para_nvv}
 \end{table}
+
+\begin{table}[H]
+\caption{Listening tests, on a 1--5 scale with 95\% confidence intervals. Zero-shot TTS gets one
+overall score; NVV synthesis gets separate scores for audio quality, naturalness and similarity
+to the reference voice.}
+\label{tab:mos}
+\centering
+\input{tables/mos}
+\end{table}
+
+\section{Conclusion}\label{sec:conclusion}
+% TEMPORARY: rewrite once the fine-tuned results and the listening tests are in.
+We set out to give Vietnamese TTS the ability to laugh, sigh, cough and make other non-verbal
+sounds where the text asks for them. The released OmniVoice cannot do this: on our Vietnamese
+test sentences it made no sound at all for 64\% of the tags and the right sound in the right
+place for only 11.5\%. Because no Vietnamese training data for this task existed, we built a
+pipeline that creates it automatically from real Vietnamese speech, adapting SynParaSpeech with
+a larger sound inventory, an audio model that places each tag in a real pause, speaker-matched
+sound selection, natural pauses around the inserted sound and automatic quality checks. The
+pipeline produced about 811 hours of labelled speech covering 17 sound types. Fine-tuned on this
+data, OmniVoice makes the right sound at the right place for XX\% of tags, with ordinary speech
+quality XX (WER XX\% against 8.1\%) and a real-time factor of XX, fast enough for live
+conversation.
+
+The work has limits that the next steps should address. Each training example carries one sound,
+inserted into an existing pause, so sounds that overlap speech, such as laughing while talking,
+are not covered. The inserted sounds are recorded by other people and only converted into the
+target voice, so their style may not always suit a Vietnamese speaker. Three of the 17 sound
+types (burp, grunt and yell) are trained but not yet tested, and several detection thresholds
+in the evaluation are still to be calibrated by listening. Next, we plan to complete the
+listening tests against Fish Audio and the released OmniVoice, to train a version on ViVoice
+alone to separate the effect of the NVV data from that of extra Vietnamese training, and to
+extend the test set to all 17 sound types.
 
 \bibliography{iclr2025_conference}
 \bibliographystyle{iclr2025_conference}

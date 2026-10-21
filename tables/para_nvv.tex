@@ -2,17 +2,17 @@
 % \input{tables/para_nvv} inside a table environment that holds the caption and label.
 % Preview: pdflatex para_nvv_preview.tex (in this directory).
 % Released row: VLSP/nvv14_eval.py on eval/nvv_test_vi.jsonl x 7 reference voices (2,940 items), report in
-% VLSP/exp/nvv14/report.md. WER over all items (6.94 without the 21 sentences that contain digits). RTF on one
-% RTX 5070 Ti, batch of one, float16, 100 items after a warm-up call.
+% VLSP/exp/nvv14/report.md. WER over all items (6.94 without the 21 sentences that contain digits). RTF of
+% OmniVoice on one DGX A100 GPU (mean); on an RTX 5070 Ti it was 0.17.
+% NVMR and NVPA are over all 14 tested classes: NVPA all 0.115 (339 of 2,940 correct), NVMR 0.644
+% (1,892 of 2,940 missed). The report's split for the released model: NVMR 0.37 on laughter and
+% sigh, 0.69 on the other 12; NVPA 0.40 and 0.07. MOS is in the listening-test table.
 \small
-\setlength{\tabcolsep}{5pt}
-\begin{tabular}{lrrrrrrrr}
+\begin{tabular}{lrrrrr}
 \toprule
- & \multicolumn{2}{c}{NVMR $\downarrow$} & \multicolumn{2}{c}{NVPA $\uparrow$} & & & & \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}
-System & Shared & New & Shared & New & MOS $\uparrow$ & WER $\downarrow$ & SS $\uparrow$ & RTF $\downarrow$ \\
+System & NVMR $\downarrow$ & NVPA $\uparrow$ & WER $\downarrow$ & SS $\uparrow$ & RTF $\downarrow$ \\
 \midrule
-OmniVoice (released)         & 0.37 & 0.69 & 0.40 & 0.07 & XX{\scriptsize$\pm$XX} & 8.11 & 0.7539 & 0.17 \\
-OmniVoice fine-tuned (ours)  & & & & & XX{\scriptsize$\pm$XX} & XX & XX & XX \\
+OmniVoice (released)         & 0.64 & 0.12 & 8.11 & 0.7539 & 0.055 \\
+OmniVoice fine-tuned (ours)  & XX   & XX   & XX   & XX     & XX \\
 \bottomrule
 \end{tabular}

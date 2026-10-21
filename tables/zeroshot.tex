@@ -5,18 +5,19 @@
 % measure ours on the same GPU as [CITE], or the RTF column does not compare.
 % Released row: VLSP/nvv14_eval.py, task "plain" (text_plain of eval/nvv_test_vi.jsonl x 7 reference voices,
 % 2,940 items), report in VLSP/exp/nvv14/report.md. WER over all items (2.48 without the 21 sentences that
-% contain digits). RTF on one RTX 5070 Ti, batch of one, float16, 100 items after a warm-up call.
+% contain digits). RTF of OmniVoice on one DGX A100 GPU (mean); on an RTX 5070 Ti it was
+% 0.19. MOS is in the listening-test table (tables/mos.tex).
 \small
-\begin{tabular}{lrrrr}
+\begin{tabular}{lrrr}
 \toprule
-System & MOS $\uparrow$ & WER $\downarrow$ & SS $\uparrow$ & RTF $\downarrow$ \\
+System & WER $\downarrow$ & SS $\uparrow$ & RTF $\downarrow$ \\
 \midrule
-viXTTS                       & 2.51 & 3.27 & 0.7021 & 0.67 \\
-F5-TTS                       & 3.93 & 3.02 & 0.8196 & 0.47 \\
-VietVoice-TTS                & 3.58 & 2.37 & 0.7834 & 0.47 \\
-VieNeu-TTS                   & 3.69 & 2.00 & 0.6524 & 0.89 \\
+viXTTS                       & 3.27 & 0.7021 & 0.67 \\
+F5-TTS                       & 3.02 & 0.8196 & 0.47 \\
+VietVoice-TTS                & 2.37 & 0.7834 & 0.47 \\
+VieNeu-TTS                   & 2.00 & 0.6524 & 0.89 \\
 \midrule
-OmniVoice (released)         & XX{\scriptsize$\pm$XX} & 3.76 & 0.7491 & 0.19 \\
-OmniVoice fine-tuned (ours)  & XX{\scriptsize$\pm$XX} & XX & XX & XX \\
+OmniVoice (released)         & 3.76 & 0.7491 & 0.055 \\
+OmniVoice fine-tuned (ours)  & XX   & XX     & XX \\
 \bottomrule
 \end{tabular}

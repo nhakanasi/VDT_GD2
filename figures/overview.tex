@@ -64,6 +64,10 @@
   \newcommand{\steplabel}[3]{%
     \node[steptxt, anchor=north] (tmp) at #1 {#3};
     \node[num, left=2pt of tmp] {#2};}
+  % A step we change from SynParaSpeech: its number is red.
+  \newcommand{\ourstep}[3]{%
+    \node[steptxt, anchor=north] (tmp) at #1 {#3};
+    \node[num, fill=event, left=2pt of tmp] {#2};}
 
   % ═══ (a) Training-data synthesis ═══════════════════════════════════════════════
   % ── (1) Slot finding: real pauses between aligned words ──
@@ -95,7 +99,7 @@
     \coordinate (llm) at (0, 0);
   \end{scope}
   \node[small, below=0.55cm of llm] {Qwen3-Omni};
-  \steplabel{(6.25, -1.0)}{2}{Tag selection}
+  \ourstep{(6.25, -1.0)}{2}{Tag selection}
   \draw[arr] (src.east) -- node[lab, above] {audio +} node[lab, below] {slots}
     ($(llm)+(-0.62, 0)$);
 
@@ -113,11 +117,11 @@
   \draw[event, line width=0.7pt, rounded corners=2pt]
     ($(c0.south west)+(-0.06, -0.02)$) rectangle ($(c0.north east)+(0.06+0.95, 0.02)$);
   \node[small, above=1pt of c0.north east, xshift=0.5cm] {$p\propto e^{-\Sigma\lambda d}$};
-  \steplabel{(9.75, -1.0)}{3}{Clip selection}
+  \ourstep{(9.75, -1.0)}{3}{Clip selection}
   \draw[arr] ($(llm)+(0.62, 0)$) -- node[lab, above] {<1>}
     node[lab, below, text=event] {[laughter]} ($(c1.west)+(-0.05, 0)$);
 
-  \node[db] (corpus) at (12.75, 0.15) {};
+  \node[db, draw=event, line width=0.8pt] (corpus) at (12.75, 0.15) {};
   \node[small, below=1pt of corpus] {NVV clips};
   \draw[arr] (corpus.west) -- ($(c1.east)+(1.0, 0)$);
 
@@ -150,7 +154,7 @@
     node[midway, above=2pt, font=\fontsize{6}{7}\selectfont\bfseries] {[laughter]};
   \node[small, below=1pt of sp]
     {…chứ thôi , {\color{event}\textbf{[laughter]}} để nó lành thôi…};
-  \steplabel{(7.3, -3.62)}{5}{Splicing}
+  \ourstep{(7.3, -3.62)}{5}{Splicing}
   \draw[arr] (vout.east) -- (sp.west);
 
   % ── (6) Quality filter ──
@@ -162,7 +166,7 @@
     \coordinate (qf) at (0, 0);
   \end{scope}
   \node[small, above=0.38cm of qf] {NISQA};
-  \steplabel{(10.45, -3.62)}{6}{Filter}
+  \ourstep{(10.45, -3.62)}{6}{Filter}
   \draw[arr] (sp.east) -- ($(qf)+(-0.42, 0)$);
 
   % ── Output dataset ──
