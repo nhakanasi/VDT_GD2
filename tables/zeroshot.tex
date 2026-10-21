@@ -7,6 +7,8 @@
 % on the NVV sentences, VLSP/exp/nvv14/report.md, is a different set: base WER 3.76, SIM-o
 % 0.7491.) RTF of both OmniVoice
 % models on one DGX A100 GPU (base mean 0.055); on an RTX 5070 Ti the base was 0.19.
+% Fish Audio (fishaudio3): WER 11.31, SIM-o 0.79; it is queried through an API served with vLLM, not run as
+% a local model, so its RTF is not measured.
 % SIM-o and RTF to 2 decimals. Unrounded SIM-o of the reported rows: viXTTS 0.7021, F5-TTS
 % 0.8196, VietVoice-TTS 0.7834, VieNeu-TTS 0.6524.
 \small
@@ -18,6 +20,7 @@ viXTTS                       & 3.27 & 0.70 & 0.67 \\
 F5-TTS                       & 3.02 & 0.82 & 0.47 \\
 VietVoice-TTS                & 2.37 & 0.78 & 0.47 \\
 VieNeu-TTS                   & 2.00 & 0.65 & 0.89 \\
+Fish Audio                   & 11.31 & 0.79 & -- \\
 \midrule
 OmniVoice                    &      &      &      \\
 \quad + base                 & 3.93 & 0.84 & 0.06 \\

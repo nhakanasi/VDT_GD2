@@ -152,15 +152,15 @@ gives an overview.
 
 \begin{figure}[htb]
   \centering
-  \includegraphics[width=\linewidth]{figures/overview.pdf}
-  \caption{Overview. (a) Training-data synthesis on a real example: VAD pauses between
-  aligned words become slots; an omni LLM picks one slot and one tag; an NVV clip of
-  that class is sampled to match the speaker, converted to the speaker's voice with Seed-VC,
-  spliced into the pause and quality-filtered. Red step numbers mark the steps we change from
-  SynParaSpeech, and the red outline marks the extended NVV clip pool. (b) OmniVoice is
-  fine-tuned on the synthetic
-  data with untagged ViVoice; at inference an inline tag produces the NVV in the cloned voice
-  (waveforms in (b) are illustrative).}
+  % Designed in Canva (figures/Add a subheading.pdf, an A4 page); trimmed to the drawing here.
+  \includegraphics[width=\linewidth, trim=34.8bp 316.7bp 36.8bp 78bp, clip]{figures/overview_canva.pdf}
+  \caption{Overview. (a) Training-data synthesis on a real example: pause detection finds the
+  pauses between words and marks them in the transcript; tag selection picks one of them and a
+  tag, here \texttt{[laughter]}; clip selection draws a laughter clip that suits the speaker;
+  voice conversion turns it into the speaker's voice; splicing inserts it into the pause; and the
+  filter keeps the result only if its quality holds. (b) The resulting NVV speech corpus, mixed
+  with untagged ViVoice speech, is used to fine-tune OmniVoice, which then makes the sound where
+  the tag appears in its input.}
   \label{fig:overview}
 \end{figure}
 
@@ -182,14 +182,13 @@ only if it is a clean, isolated instance of its class: a sound event detector co
 and no other, no speech overlaps it, its length is plausible for the class, and it is neither
 buried in noise nor clipped. The pool covers 17 classes (Table~\ref{tab:nvv}).
 
-\item \textbf{Slot finding.} Following SynParaSpeech~\citep{synparaspeech}, we first find the
+\item \textbf{Pause detection.} Following SynParaSpeech~\citep{synparaspeech}, we first find the
 pauses where an NVV could go and only then let a model choose among them. Placing the tag first
 and aligning it afterwards fails on connected speech, where the boundary between two words is
 usually continuous voicing. A voice activity detector finds the pauses, a forced aligner finds
 the word boundaries, and a pause that falls between two words becomes a \emph{slot}. The slots
 are marked with numbered markers in the transcript, e.g.\
-``\viet{\ldots\ chứ thôi , <1> để nó lành thôi \ldots\ <2> nhưng mà \ldots}'' in
-Figure~\ref{fig:overview}a.
+``\viet{\ldots\ chứ thôi , <1> để nó lành thôi \ldots}'' in Figure~\ref{fig:overview}a.
 
 \item \textbf{Tag selection.} An omni-modal LLM listens to the recording, reads the marked
 transcript, and picks the one slot where a non-verbal sound would most plausibly occur,
@@ -295,15 +294,14 @@ on NVIDIA B200. The training objective is unchanged from OmniVoice. We select th
 \subsection{Baselines}
 We evaluate two tasks. In zero-shot TTS, the input is plain Vietnamese text without tags, spoken
 in a voice cloned from a reference recording; this task checks that fine-tuning for NVVs keeps
-ordinary Vietnamese synthesis intact. Its baselines are the released OmniVoice and four
-Vietnamese TTS systems, viXTTS, F5-TTS, VietVoice-TTS and VieNeu-TTS, all evaluated on the same
-test subset (Table~\ref{tab:zeroshot}).% TODO cite viXTTS, F5-TTS, VietVoice-TTS, VieNeu-TTS
+ordinary Vietnamese synthesis intact. Its baselines are the released OmniVoice, four
+Vietnamese TTS systems, viXTTS, F5-TTS, VietVoice-TTS and VieNeu-TTS, and Fish Audio's TTS,
+queried through an API served with vLLM, all evaluated on the same test subset (Table~\ref{tab:zeroshot}).% TODO cite viXTTS, F5-TTS, VietVoice-TTS, VieNeu-TTS
 \ In NVV synthesis, the input is tagged Vietnamese text, and each tag must become the matching
 vocalization at its position. Its baselines are the released OmniVoice, given the same tagged
-input as our model, and Fish Audio's commercial TTS service (Table~\ref{tab:para}); the four
+input as our model, and Fish Audio (Table~\ref{tab:para}); the four
 Vietnamese systems have no NVV tags and are not compared on this task. The listening test on NVV synthesis (Table~\ref{tab:mos}) covers
-three systems: Fish Audio's commercial TTS service, a multilingual system with its own expression
-markers, the released OmniVoice and our fine-tuned model.% TODO: name the Fish Audio model and say how tags reach it
+three systems: Fish Audio, a multilingual system with its own expression markers, the released OmniVoice and our fine-tuned model.% TODO: name the Fish Audio model and say how tags reach it
 % Planned baseline, not yet run: OmniVoice fine-tuned on ViVoice alone, without NVV data, which
 % isolates the effect of the NVV data from in-domain Vietnamese adaptation. Add it to
 % Table~\ref{tab:para} and to this subsection once it has results.
@@ -372,8 +370,8 @@ and we report each score as a mean with its 95\% confidence interval (Table~\ref
 
 \subsection{Results}\label{sec:results}
 Table~\ref{tab:zeroshot} compares our fine-tuned model with the released OmniVoice and other
-Vietnamese TTS systems on zero-shot synthesis of plain text, without tags, with all six systems
-evaluated on the same 238 utterances. Table~\ref{tab:para} compares
+Vietnamese TTS systems on zero-shot synthesis of plain text, without tags, with all seven
+systems evaluated on the same 238 utterances. Table~\ref{tab:para} compares
 the released and fine-tuned OmniVoice on NVV synthesis, and Table~\ref{tab:mos} gives the
 listening-test scores on NVV synthesis. Given Vietnamese text, the released
 model produces no vocalization at 37\% of the \texttt{[laughter]} and \texttt{[sigh]} tags, the
@@ -391,9 +389,16 @@ model's (0.74 against 0.75). On plain text without tags (Table~\ref{tab:zeroshot
 small: the word error rate rises from 3.93\% to 4.78\%, and speaker similarity is the same, 0.84
 for both models.
 
+Fish Audio does worse than our model on both tasks. On plain text its word
+error rate is 11.31\%, more than twice ours, and its speaker similarity is 0.79. On a 280-item
+subset of the NVV test set it misses 65\% of the tags and realises only 23\% correctly, against
+35\% and 50\% for our model, with a word error rate of 60.48\%.
+
 \begin{table}[H]
 \caption{Zero-shot Vietnamese TTS on plain text, without NVV tags. Every system is evaluated on
-the same 238 utterances sampled from our internal VietVoice dataset. WER is in \%.}
+the same 238 utterances sampled from our internal VietVoice dataset. WER is in \%. Fish Audio
+is queried through an API served with vLLM, not run as a local model, so its RTF is not
+measured.}
 \label{tab:zeroshot}
 \centering
 \input{tables/zeroshot}
@@ -402,7 +407,8 @@ the same 238 utterances sampled from our internal VietVoice dataset. WER is in \
 \begin{table}[H]
 \caption{Vietnamese NVV synthesis, over all 2,940 tagged items (14 classes). The two OmniVoice
 models get the same tagged input, so for 12 of the 14 classes the base model sees tags it was
-never trained on. WER is in \%.}
+never trained on. Fish Audio is evaluated on a 280-item subset, through an API served with
+vLLM, so its RTF is not measured. WER is in \%.}
 \label{tab:para}
 \centering
 \input{tables/para_nvv}
@@ -487,7 +493,7 @@ summed clip durations.}
 \input{tables/nvv_clips}
 \end{table}
 
-\subsection{Slot finding}
+\subsection{Pause detection}
 On a 20-utterance pilot, placing the tag first and aligning it afterwards put the nearest real
 pause a median 2.02\,s away from the aligned tag. Silero VAD finds the speech regions. Regions
 less than 0.10\,s apart are merged, so stop closures and glottal breaks do not count as pauses,

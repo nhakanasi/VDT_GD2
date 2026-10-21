@@ -13,13 +13,18 @@
 % RTF: both OmniVoice models on one DGX A100 GPU (base mean 0.055). On an RTX 5070 Ti the report
 % gives base 0.1655 and fine-tuned 0.1379.
 % SIM-o (unrounded: base 0.7539, fine-tuned 0.7415) and RTF to 2 decimals.
+% Fish Audio: run "drama3", 280 items (a subset of the 2,940): NVMR 0.652 / 0.655 and NVPA 0.268 /
+% 0.216 on laughter+sigh / the other 12, NVPA all 0.228, WER 60.48 (60.48 without digits), SS
+% 0.3209. CHECK: the NVMR (0.6543) is derived from the rounded split, weighting it so that the
+% split reproduces NVPA all (about 23% of the items on laughter+sigh); replace it with the exact
+% ratio. NVPA 0.2280 is the rounded 0.228. Queried through an API served with vLLM, so its RTF is not measured.
 % MOS is in the listening-test table.
 \small
 \begin{tabular}{lccccc}
 \toprule
 System & \textbf{NVMR} $\downarrow$ & \textbf{NVPA} $\uparrow$ & \textbf{WER} $\downarrow$ & \textbf{SIM-o} $\uparrow$ & \textbf{RTF} $\downarrow$ \\
 \midrule
-Fish Audio                   & XX     & XX     & XX   & XX   & XX \\
+Fish Audio                   & 0.6543 & 0.2280 & 60.48 & 0.32 & -- \\
 OmniVoice                   &        &        &      &      &    \\
 \quad + base                 & 0.6435 & 0.1153 & 8.11 & 0.75 & 0.06 \\
 \quad + fine-tuned (ours)    & 0.3507 & 0.5000 & 6.73 & 0.74 & 0.06 \\
