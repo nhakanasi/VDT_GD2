@@ -1,0 +1,40 @@
+Text for the Canva assets, from the pilot row tXO46Ys-7Qc_00028 (window 8.6-13.2 s).
+
+Full transcript (untagged):
+đó là lúc đó là mình bị , cũng không có gì quá nghiêm trọng đâu mình bị kiến ba khoang cắn thôi , và cái vết cắn nó cũng không có gì , kinh khủng , ở cái ngày đầu tiên mình nghĩ chứ thôi , , để nó lành thôi chắc mai nó lành thôi , nhưng mà , càng ngày thì cái vết cắn , nó càng nghiêm trọng , và mình buộc , phải đi vào bệnh viện .
+
+Full transcript (tagged):
+đó là lúc đó là mình bị , cũng không có gì quá nghiêm trọng đâu mình bị kiến ba khoang cắn thôi , và cái vết cắn nó cũng không có gì , kinh khủng , ở cái ngày đầu tiên mình nghĩ chứ thôi , , [laughter] để nó lành thôi chắc mai nó lành thôi , nhưng mà , càng ngày thì cái vết cắn , nó càng nghiêm trọng , và mình buộc , phải đi vào bệnh viện .
+
+1 Slot finding
+  input : ...chứ thôi , để nó lành thôi chắc mai nó lành thôi , nhưng mà...
+  output: ...chứ thôi , <1> để nó lành thôi chắc mai nó lành thôi , <2> nhưng mà...
+  (grey bands in 1_slot_finding_output: left band = <1>, right band = <2>)
+
+2 Tag selection (Qwen3-Omni listens to the audio and reads the marked transcript)
+  input : audio + ...chứ thôi , <1> để nó lành thôi chắc mai nó lành thôi , <2> nhưng mà...
+  output: {"slot": 1, "tag": "laughter"}  ->  <1> + [laughter]
+
+3 Clip selection
+  input : [laughter] + 3 candidate laughter clips (other people's voices)
+  output: the clip drawn with probability p ∝ exp(-Σ λ d), shown as the first candidate
+
+4 Voice conversion (Seed-VC)
+  input : the chosen clip, in another person's voice
+  output: the same laugh in the host speaker's voice
+
+5 Splicing
+  input : the recording + the converted laugh
+  output: ...chứ thôi , [laughter] để nó lành thôi chắc mai nó lành thôi , nhưng mà...
+  (red span in 5_splicing_output = the inserted laugh with its silence)
+
+6 Filter (NISQA)
+  input : the finished recording
+  output: kept (quality and continuity did not drop past the thresholds)
+
+(b) Fine-tuning and inference (illustrative waveforms)
+  input : hôm nay vui quá [laughter] ...  + reference voice
+  output: speech with the laugh
+
+Colours: speech #2B2B2B, NVV event #C62828, other people's clips #8C8C8C, LLM #E07B1F,
+fine-tuned model #A61C1C, slots #D9D9D9.

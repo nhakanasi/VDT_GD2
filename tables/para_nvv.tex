@@ -1,18 +1,27 @@
 % NVV synthesis table body (Table~\ref{tab:para}). The paper includes it with
 % \input{tables/para_nvv} inside a table environment that holds the caption and label.
 % Preview: pdflatex para_nvv_preview.tex (in this directory).
-% Released row: VLSP/nvv14_eval.py on eval/nvv_test_vi.jsonl x 7 reference voices (2,940 items), report in
-% VLSP/exp/nvv14/report.md. WER over all items (6.94 without the 21 sentences that contain digits). RTF of
-% OmniVoice on one DGX A100 GPU (mean); on an RTX 5070 Ti it was 0.17.
-% NVMR and NVPA are over all 14 tested classes: NVPA all 0.115 (339 of 2,940 correct), NVMR 0.644
-% (1,892 of 2,940 missed). The report's split for the released model: NVMR 0.37 on laughter and
-% sigh, 0.69 on the other 12; NVPA 0.40 and 0.07. MOS is in the listening-test table.
+% OmniVoice rows: VLSP/nvv14_eval.py on eval/nvv_test_vi.jsonl x 7 reference voices (2,940 items),
+% report in VLSP/exp/nvv14/report.md. WER over all items (without the 21 sentences that contain
+% digits: base 6.94, fine-tuned 5.61).
+% Base: NVPA 339/2,940 = 0.1153, NVMR 1,892/2,940 = 0.6435 (per-tag counts in the report); split
+% NVMR 0.367 / 0.690 and NVPA 0.402 / 0.067 on laughter+sigh / the other 12.
+% Fine-tuned: split NVMR 0.102 / 0.392, NVPA 0.857 / 0.440, NVPA all 0.500.
+% CHECK: the fine-tuned NVMR (0.3507) is derived from the rounded split (43/420 + 988/2,520 missed)
+% and NVPA (0.5000) from the rounded 0.500; replace both with the exact ratios from the per-tag
+% counts.
+% RTF: both OmniVoice models on one DGX A100 GPU (base mean 0.055). On an RTX 5070 Ti the report
+% gives base 0.1655 and fine-tuned 0.1379.
+% SIM-o (unrounded: base 0.7539, fine-tuned 0.7415) and RTF to 2 decimals.
+% MOS is in the listening-test table.
 \small
-\begin{tabular}{lrrrrr}
+\begin{tabular}{lccccc}
 \toprule
-System & NVMR $\downarrow$ & NVPA $\uparrow$ & WER $\downarrow$ & SS $\uparrow$ & RTF $\downarrow$ \\
+System & \textbf{NVMR} $\downarrow$ & \textbf{NVPA} $\uparrow$ & \textbf{WER} $\downarrow$ & \textbf{SIM-o} $\uparrow$ & \textbf{RTF} $\downarrow$ \\
 \midrule
-OmniVoice (released)         & 0.64 & 0.12 & 8.11 & 0.7539 & 0.055 \\
-OmniVoice fine-tuned (ours)  & XX   & XX   & XX   & XX     & XX \\
+Fish Audio                   & XX     & XX     & XX   & XX   & XX \\
+OmniVoice                   &        &        &      &      &    \\
+\quad + base                 & 0.6435 & 0.1153 & 8.11 & 0.75 & 0.06 \\
+\quad + fine-tuned (ours)    & 0.3507 & 0.5000 & 6.73 & 0.74 & 0.06 \\
 \bottomrule
 \end{tabular}
