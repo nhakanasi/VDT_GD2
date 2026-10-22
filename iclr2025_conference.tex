@@ -459,36 +459,42 @@ extend the test set to all 17 sound types.
 \appendix
 
 \section{Training-data synthesis details}\label{app:data}
+Unless stated otherwise, the measurements in this appendix come from a 20-utterance pilot batch
+of Vietnamese podcast speech, run with the shipped settings.
 
 \subsection{NVV clips}
 % Code: ../VocalSoundExtend (nvv/pipeline.py, nvv/nvs38k.py, nvv/fsd50k.py),
 % ../Para/scripts/extract_nonspeech7k.py and ../Para/scripts/build_clip_index.py.
 Besides VocalSound~\citep{vocalsound}, the pool draws on two kinds of source: (1)~other NVV
-corpora: Nonspeech7k, whose clips we use as they are,% TODO cite
-\ and FSD50K~\citep{fsd50k}, whose clip-level labels we localise in time; and (2)~NVV events
-cut from an existing tagged speech corpus, NonVerbalSpeech-38K (NVS-38K).% TODO cite
-\ From Nonspeech7k we take breathing, crying, screaming and yawn; its other classes are already
-covered by VocalSound. For VocalSound we keep only the test and validation splits
-(\S\ref{sec:exp-data}).
+corpora: Nonspeech7k~\citep{nonspeech7k}, whose clips we use as they are, and
+FSD50K~\citep{fsd50k}, whose clip-level labels we localise in time; and (2)~NVV events cut from
+an existing tagged speech corpus, NonVerbalSpeech-38K (NVS-38K)~\citep{nvs38k}. From Nonspeech7k
+we take breathing, crying, screaming and yawn; its other classes are already covered by
+VocalSound. For VocalSound we keep only the test and validation splits (\S\ref{sec:exp-data}).
+The pool holds 5,446 VocalSound clips, 4,773 from Nonspeech7k, 1,520 from NVS-38K and 1,426
+from FSD50K (Table~\ref{tab:nvv}).
 
 Each source locates its events differently. For NVS-38K, whose captions carry one inline
 tag, we force-align the caption words with Qwen3-ForcedAligner. The aligner tends to stretch
 the neighbouring words over the non-verbal sound, so the gap between the two words around the
 tag does not give the event's extent. It only confirms that the tag refers to the dataset's
 own detected non-verbal region (within 1\,s), and that region is what we cut. FSD50K has
-clip-level labels only, so FlexSED's frame posterior for the class prompt locates the
-events (frames ${\ge}\,0.5$, gaps up to 0.3\,s merged). Clips that carry two of our target
-labels are skipped, since their events could not be told apart.
+clip-level labels only, so the frame posterior of FlexSED~\citep{flexsed} for the class prompt
+locates the events (frames ${\ge}\,0.5$, gaps up to 0.3\,s merged). FlexSED is an
+open-vocabulary sound event detector that takes the class as a text prompt, through CLAP text
+embeddings, so one model can locate and check all 17 classes, including those outside any fixed
+label set. Clips that carry two of our target labels are skipped, since their events could not
+be told apart.
 
-Every located event is then cut and checked in the same way. Its edges are tightened to the
-frame energy within $\pm$0.2\,s of the region, then padded by 75\,ms and faded by 10\,ms. The
-event is kept only if (i)~FlexSED scores its class ${\ge}\,0.5$ over the sound and scores no
-VocalSound class higher, so a new class does not duplicate an existing one; (ii)~no other
-labelled sound of the recording scores ${\ge}\,0.5$ over it; (iii)~Qwen3-ASR finds no lexical
-word in it, so no speech overlaps it; (iv)~its length is within a per-class range (e.g.
-0.2--2.5\,s for breathing, 0.8--4.0\,s for a yawn); (v)~its SNR against the recording's
-noise floor is at least 6\,dB; and (vi)~at most 0.1\% of its samples are clipped.
-Table~\ref{tab:nvv} lists the resulting 17 classes.
+Every event located in FSD50K or NVS-38K is then cut and checked in the same way. Its edges are
+tightened to the frame energy within $\pm$0.2\,s of the region, then padded by 75\,ms and faded
+by 10\,ms. The event is kept only if (i)~FlexSED scores its class ${\ge}\,0.5$ over the sound
+and scores no VocalSound class higher, so a new class does not duplicate an existing one;
+(ii)~no other labelled sound of the recording scores ${\ge}\,0.5$ over it; (iii)~Qwen3-ASR finds
+no lexical word in it, so no speech overlaps it; (iv)~its length is within a per-class range
+(e.g. 0.2--2.5\,s for breathing, 0.8--4.0\,s for a yawn); (v)~its SNR against the recording's
+noise floor is at least 6\,dB; and (vi)~at most 0.1\% of its samples are clipped. Nonspeech7k
+clips are used whole, without these checks. Table~\ref{tab:nvv} lists the resulting 17 classes.
 
 \begin{table}[H]
 \caption{NVV clip pool per tag. The first six classes come from VocalSound. Hours are the
@@ -499,92 +505,156 @@ summed clip durations.}
 \end{table}
 
 \subsection{Pause detection}
-On a 20-utterance pilot, placing the tag first and aligning it afterwards put the nearest real
-pause a median 2.02\,s away from the aligned tag. Silero VAD finds the speech regions. Regions
-less than 0.10\,s apart are merged, so stop closures and glottal breaks do not count as pauses,
-and the remaining gaps are trimmed by 0.05\,s at each edge and kept if at least 0.12\,s long.
-Silence before the first word and after the last is ignored. ViVoice transcripts have no word
-timing, so Qwen3-ForcedAligner aligns the untagged transcript to the audio. A pause becomes a
-slot when it overlaps the gap between two aligned words; if two pauses fall in one gap, the
-longer is kept. Each slot records its midpoint and the character offset of the word after it.
-If any word cannot be matched back to the transcript in order, the utterance gets no slots and
-is skipped, rather than risk a tag between the wrong two words.
+Placing the tag first and aligning it afterwards fails on this speech. On the pilot, the cut it
+gave landed on speech nearly as loud as the utterance's average (median boundary activity 0.85,
+see Filter), and the nearest real pause was a median 2.02\,s away from the aligned tag. Moving
+the cut to a pause within 0.5\,s worked for 1 of 17 utterances, and within 2.0\,s for only 7 of
+17, by which point the event no longer sits between the words the transcript says.
+
+Silero VAD~\citep{silerovad} finds the speech regions. We use a trained speech/non-speech
+classifier rather than an energy threshold because a breath in a pause is not silent but is not
+speech either; an energy detector also blurs speech by about one 128\,ms analysis frame into the
+pause. Regions less than 0.10\,s apart are merged, so stop closures and glottal breaks do not
+count as pauses, and the remaining gaps are trimmed by 0.05\,s at each edge and kept if at least
+0.12\,s long. Silence before the first word and after the last is ignored.
+
+ViVoice transcripts have no word timing, so Qwen3-ForcedAligner~\citep{qwen3asr} aligns the
+untagged transcript to the audio. It needs no pronunciation dictionary, which matters for
+Vietnamese conversational fillers such as ``\viet{à}'', ``\viet{ha}'' and ``\viet{thì}'', exactly
+the words a tag is spliced next to. The dictionary-based Montreal Forced Aligner~\citep{mfa},
+which we also tried, marks such fillers as out-of-vocabulary speech noise and only guesses their
+timing. A pause becomes a slot when it overlaps the gap between two aligned words; if two pauses
+fall in one gap, the longer is kept. Each slot records its midpoint and the character offset of
+the word after it. If any word cannot be matched back to the transcript in order, the utterance
+gets no slots and is skipped, rather than risk a tag between the wrong two words. On the pilot,
+16 of 20 utterances had at least one slot, 47 slots in all (a median of 2 per utterance) with
+pauses of 0.20--1.20\,s; the other 4 had no qualifying pause and were dropped.
 
 \subsection{Tag selection}
-The recording and the marked transcript go to Qwen3-Omni-30B-A3B-Instruct, served locally with
-vLLM. The model is asked to listen to the delivery and answer in JSON with the one marker where
-a non-verbal sound would most plausibly occur and the one tag from the offered list that fits
-what the speaker is doing there, or \texttt{\{"slot": null\}} if no position suits any sound.
-We sample with temperature 0.2 and top-$p$ 0.95. An invalid reply is retried, up to three
-attempts in all, and a null answer skips the utterance.
+The recording and the marked transcript go to Qwen3-Omni-30B-A3B-Instruct~\citep{qwen3omni},
+served locally with vLLM. An audio model is needed because a numbered position means little from
+text alone: listening is what tells a breath pause from a hesitation, and whether a laugh or a
+sigh fits the speaker's mood at that point. SynParaSpeech, by contrast, places tags with a
+text-only model. Among open models, Qwen3-Omni reports state-of-the-art results on 32 of 36
+audio and audio-visual benchmarks~\citep{qwen3omni}, and serving it locally keeps the recordings
+on our own servers, with no external API.
 
-On the pilot the model chose only laughter and sigh. The tag balancer keeps a running count of
-the tags assigned so far, carried across runs, and withholds from the offered list any tag that
-holds more than XX\% of them, with the share taken over at least XX tags. A reply that names a
-withheld tag is re-asked. The tag is offered again once the other tags catch up. With the
-balancer, the training set holds between 10,190 and 13,522 utterances per tag
-(Table~\ref{tab:synth}).
-% TODO: fill in the cap and the minimum count above (config: tagging.max_tag_share).
+The model is asked to listen to the delivery and answer in JSON with the one marker where a
+non-verbal sound would most plausibly occur and the one tag from the offered list that fits what
+the speaker is doing there, or \texttt{\{"slot": null\}} if no position suits any sound. We
+sample with temperature 0.2 and top-$p$ 0.95. An invalid reply is retried, up to three attempts
+in all, and a null answer skips the utterance.
+
+Left alone, the model settles on a few classes: on the pilot it tagged 16 utterances, all with
+laughter (9) or sigh (7). The tag balancer keeps a running count of the tags assigned so far,
+carried across runs, and withholds from the offered list any tag that holds more than 25\% of
+them, with the share taken over at least 20 tags, so a tag is first withheld on its sixth pick
+within the first 20. A reply that names a withheld tag is re-asked, and the tag is offered again
+once the other tags catch up. With the balancer, the training set holds between 10,190 and
+13,522 utterances per tag (Table~\ref{tab:synth}).
 
 \subsection{Clip selection}
 Clips whose peak is below 0.05 or that are shorter than 0.35\,s after trimming silence, and
-clips with more than 1\% of samples at full scale, are excluded. The four measures are taken on
-each trimmed clip and on the 2.5\,s of speech before the cut: \emph{intensity}, the mean of the
-clip's crest-factor and duration ranks within its class, against the rank of the context
-window's RMS among all windows of that length in the utterance; \emph{clarity}, the SNR as the
-ratio of the 90th to the 10th percentile of 20\,ms frame RMS (0--60\,dB, measured on the whole
-utterance for the speaker); \emph{tempo}, envelope peaks per second, compared in octaves and
-used for laughter only, since the timing of a cough or sneeze has nothing to do with speaking
-rate; and \emph{tilt}, the slope of a line fitted to the log envelope, in dB from start to end.
-Each distance is divided by a tolerance set to about a third of its measured spread (0.35 rank,
-12\,dB, 1 octave, 18\,dB). The weights are $\lambda = 1.0, 1.5, 1.0, 0.5$ for intensity,
-clarity, tempo and tilt. Clarity weighs most because VocalSound's microphones vary far more than
-its speakers' loudness. Tilt has half weight because its premise, that a speaker trailing off
-should be followed by a decaying event, has not been confirmed by listening. So that a
-soft-spoken speaker still sometimes gets a loud laugh, the intensity target is drawn per row
-from $\mathcal{N}(r, 0.2^2)$, clipped to $[0,1]$, around the speaker's own rank $r$. Clip
-features are precomputed once for the whole pool, so every row samples from the full class.
+clips with more than 1\% of samples at full scale, are excluded. The four measures match the
+speaker only on properties that survive voice conversion, which we checked on converted output.
+Seed-VC rebuilds pitch from the target speaker: regressing converted F0 on source and speaker F0
+gives a source coefficient of $+0.04$ against $0.84$ for the speaker, and source and converted
+pitch contours correlate at only $+0.14$. It keeps the recording channel (clip SNR spans
+33--60\,dB from the 10th to the 90th percentile, against 42--55\,dB for the speech), the tempo
+(envelope rate changes by a median 0.147 octave) and the intensity (crest factor changes by a
+median 0.06 octave). Matching on pitch would therefore be wasted effort.
+
+The four measures are taken on each trimmed clip and on the 2.5\,s of speech before the cut:
+\emph{intensity}, the mean of the clip's crest-factor and duration ranks within its class,
+against the rank of the context window's RMS among all windows of that length in the utterance;
+\emph{clarity}, the SNR as the ratio of the 90th to the 10th percentile of 20\,ms frame RMS
+(0--60\,dB, measured on the whole utterance for the speaker); \emph{tempo}, envelope peaks per
+second, compared in octaves and used for laughter only, since the timing of a cough or sneeze
+has nothing to do with speaking rate; and \emph{tilt}, the slope of a line fitted to the log
+envelope, in dB from start to end. Each distance is divided by a tolerance set to about a third
+of its measured spread (0.35 rank, 12\,dB, 1 octave, 18\,dB). The weights are
+$\lambda = 1.0, 1.5, 1.0, 0.5$ for intensity, clarity, tempo and tilt. Clarity weighs most
+because VocalSound's microphones vary far more than its speakers' loudness. Tilt has half weight
+because its premise, that a speaker trailing off should be followed by a decaying event, has not
+been confirmed by listening. So that a soft-spoken speaker still sometimes gets a loud laugh, the
+intensity target is drawn per row from $\mathcal{N}(r, 0.2^2)$, clipped to $[0,1]$, around the
+speaker's own rank $r$. Clip features are precomputed once for the whole pool, so every row
+samples from the full class. On the pilot, against uniform sampling (400 draws per utterance),
+weighted sampling lowered the mean mismatch of the chosen clip by 38\% on clarity, 35\% on tempo
+and 5\% on intensity, which had the least room to improve.
 
 \subsection{Voice conversion}
-The selected clip is trimmed of silence, peak-normalised to 0.95 and zero-padded to at least
-1\,s, as Seed-VC's input chunking requires. It is converted with Seed-VC~v1 (50 diffusion
-steps, classifier-free guidance rate 0.7, length adjustment 1.0, F0 conditioning off) at
-22.05\,kHz, and is trimmed again afterwards. The pitch tracker that F0 conditioning would use
-is RMVPE.
+Seed-VC~\citep{seedvc} is a zero-shot voice converter, so the host utterance itself can serve as
+the voice reference; SynParaSpeech uses it for the same step. The selected clip is trimmed of
+silence, peak-normalised to 0.95 and zero-padded to at least 1\,s, as Seed-VC's input chunking
+requires. It is converted with Seed-VC~v1 (50 diffusion steps, classifier-free guidance rate 0.7,
+length adjustment 1.0, F0 conditioning off) at 22.05\,kHz, and is trimmed again afterwards. F0
+conditioning is off because its pitch tracker, RMVPE, is built for speech and singing and fails
+on coughs, sniffs and throat clearing.
+
+Each conversion is checked with CAM++~\citep{campplus}, the speaker encoder Seed-VC itself
+conditions on. On the pilot, the similarity of the converted event to the utterance had a median
+of 0.41, against 0.07 for the unconverted clip, and every conversion beat its clip. A
+WavLM-based check, tried first, rated the unconverted clip as closer to the speaker on several
+rows (0.539 against 0.410 for the converted event on one of them), so it was dropped. The score
+is kept as a diagnostic, not a filter, since a 1--3\,s non-speech sound gives a weaker embedding
+than an utterance.
 
 \subsection{Splicing}
 The converted event's RMS is set to the RMS of the 2.5\,s of speech before the cut plus a
 per-class offset (laughter $+3$\,dB, sneeze $+4$, cough $+2$, throat clearing $-2$, sigh $-4$,
 sniff $-5$, and 0 for the other classes), and its peak is capped at 1.5 times the speech's
-99.9th-percentile level. The recording is cut at the slot's midpoint, and a 50\,ms exponential
-fade (curvature $k{=}5$) is applied to all four edges: the end of the speech before the cut,
-both ends of the event and the start of the speech after it. An exponential fade reaches half
-level within the first 14\% of its length.
+99.9th-percentile level. Referencing the local RMS rather than the utterance's peak means a
+single loud consonant elsewhere cannot set the level: in a test, one stray full-scale sample
+moved a peak-referenced event by $+10.4$\,dB and a context-referenced one by 0\,dB. The recording
+is cut at the slot's midpoint, and a 50\,ms exponential fade (curvature $k{=}5$) is applied to
+all four edges: the end of the speech before the cut, both ends of the event and the start of
+the speech after it. An exponential fade reaches half level within the first 14\% of its length,
+which keeps the sharp onset of a laugh, cough or sneeze. On the pilot, the largest
+sample-to-sample jump across the cut fell from a mean of 0.00163 with plain concatenation to
+0.00012, smaller on 15 of 16 rows; on 10 of them it is below one 16-bit step, so no jump
+remains in the written file. Resynthesising the stitched recording with a neural vocoder was
+rejected, because it would regenerate all of the speaker's real audio, not just the junctions.
 
 In the target pauses, $\bar{T}_{p}$ is the median gap between voiced stretches of the
-utterance, clamped to $[0.04, 0.40]$\,s, and $s_g{=}1$. The class scales
-$(s_{\mathrm{pre}}^{(c)}, s_{\mathrm{post}}^{(c)})$ are laughter $(0.6, 1.4)$, sigh
-$(0.5, 1.2)$, cough and throat clearing $(0.7, 1.0)$, sneeze $(0.8, 1.3)$, sniff $(0.5, 0.7)$,
-and $(1, 1)$ for the other classes.
+utterance, clamped to $[0.04, 0.40]$\,s (measured speakers range from 40 to 400\,ms), and
+$s_g{=}1$. The class scales $(s_{\mathrm{pre}}^{(c)}, s_{\mathrm{post}}^{(c)})$ are laughter
+$(0.6, 1.4)$, sigh $(0.5, 1.2)$, cough and throat clearing $(0.7, 1.0)$, sneeze $(0.8, 1.3)$,
+sniff $(0.5, 0.7)$, and $(1, 1)$ for the other classes.
 % NOTE: the earlier draft said these scales were measured from the pauses around each tag. In
 % the code (Para/para_synth/vocalsound.py, GAP_SHAPE) they are priors set from this
 % respiratory reasoning, not measurements, and only the six VocalSound classes have them.
 % Measure them, or keep this wording.
 The inserted silence is $\max(0, T - T_{\mathrm{exist}})$, where $T_{\mathrm{exist}}$ is the
-silence already on that side of the cut. It is filled with the recording's quietest 100\,ms,
-tiled with crossfaded seams, since generated white noise audibly hissed. Finally the whole
-recording is peak-normalised to 0.95 and written as 16-bit PCM at 22.05\,kHz.
+silence already on that side of the cut. Because the cut sits in the middle of a measured pause,
+each side already has 0.30--0.53\,s of silence on the pilot, so silence was added before the
+event on only 1 of 16 rows and after it on 7. It is filled with the recording's quietest
+100\,ms, tiled with crossfaded seams. Generated white noise was tried first and audibly hissed:
+in a test recording whose background carries 1.5\% of its energy above 2\,kHz, the generated
+noise carried 82\%, against 1.3\% for the tiled background. Finally the whole recording is
+peak-normalised to 0.95 and written as 16-bit PCM at 22.05\,kHz.
 
 \subsection{Filter}
-A row is kept if (1)~its NISQA MOS drops by ${\le}\,0.5$ from source to result, (2)~its NISQA
-discontinuity drops by ${\le}\,0.22$, catching an audible seam at the splice, and (3)~its
-boundary activity at the cut is ${\le}\,1.2$. Boundary activity is measured on the source
-recording as the RMS of the 50\,ms on each side of the cut divided by the RMS of that whole side
-(0 means the cut is in silence, about 1 means it is in speech of average loudness), and a row
-is judged by its worse side. The thresholds were set on the 20-utterance pilot: the MOS
-threshold removes one clear outlier, and the other two were chosen by listening. Seed-VC's
-diffusion is not seeded, so a rejection means that one conversion was bad, and re-rendering a
-rejected row may produce a passing take.
+NISQA~\citep{nisqa} is used because a spliced recording has no clean reference to compare
+against, and NISQA predicts a listening panel's MOS, and separate quality dimensions such as
+discontinuity, from one recording alone. A row is kept if (1)~its NISQA MOS drops by
+${\le}\,0.5$ from source to result, (2)~its NISQA discontinuity drops by ${\le}\,0.22$, catching
+an audible seam at the splice, and (3)~its boundary activity at the cut is ${\le}\,1.2$.
+Boundary activity is measured on the source recording as the RMS of the 50\,ms on each side of
+the cut divided by the RMS of that whole side (0 means the cut is in silence, about 1 means it
+is in speech of average loudness), and a row is judged by its worse side.
+
+The thresholds were set on the pilot. The MOS drop ranged from $-0.09$ to $+0.75$ (median
+$+0.12$), and any threshold from 0.40 to 0.55 removes the same single outlier. The discontinuity
+drop ranged from $-0.28$ to $+0.45$, with 14 of 16 rows at or below $+0.10$, so any threshold
+from 0.10 to 0.23 keeps the same rows; 0.22 was chosen by listening and rejects 2 of 16. In all,
+13 of 16 synthesised rows pass. Boundary activity on slot-placed rows is 0.002--0.056 (median
+0.006), so the third check rejects nothing on this path; it guards input whose tag position was
+chosen without regard to pauses, where 1.2 rejects 3 of 20 rows, 1.0 rejects 7 and 0.8 rejects
+11, and where 2 of the 3 rows it rejects pass every NISQA threshold. NISQA scores are not stable
+across renders: Seed-VC's diffusion is not seeded, and re-rendering the same 20 rows moved
+discontinuity drops by up to 0.25, changing the kept count from 10 to 13. A rejection therefore
+means that one conversion was bad, and re-rendering a rejected row may produce a passing take.
 
 \section{Evaluation details}\label{app:eval}
 
@@ -604,11 +674,12 @@ without them, the released model's WER falls from 8.11\% to 6.94\%.
 
 \subsection{Metric procedures}\label{app:metrics}
 \textbf{NVPA and NVMR.} The tag is removed and the remaining words are force-aligned to the
-16\,kHz output with a Vietnamese wav2vec2 CTC model
+16\,kHz output with a Vietnamese wav2vec~2.0 CTC model~\citep{wav2vec2}
 (\nolinkurl{nguyenvulebinh/wav2vec2-base-vietnamese-250h}) and torchaudio's
 \texttt{forced\_align}. Each word boundary is a slot, and the tag sits at one of them.
 Qwen3-ForcedAligner is not used here: besides stretching words over non-verbal sounds
-(Appendix~\ref{app:data}), on Vietnamese it collapses runs of words to one instant. FlexSED then
+(Appendix~\ref{app:data}), on Vietnamese it collapses runs of words to one instant.
+FlexSED~\citep{flexsed} then
 scores each class prompt over the whole recording, in 10\,s windows with a 5\,s hop, and each
 frame keeps its highest posterior across windows. A class's events are runs of frames above 0.2
 that reach the class threshold at least once. The threshold is 0.5 for most classes, 0.4 for
@@ -626,13 +697,15 @@ own class fires.
 % breathing were set by listening; the 0.5 of the other ten classes is a placeholder. Calibrate
 % them before reporting per-tag NVPA for those classes.
 
-\textbf{WER.} The ASR model is \nolinkurl{sherpa-onnx-zipformer-vi-2025-04-20} with greedy
+\textbf{WER.} The ASR model is a Zipformer~\citep{zipformer} transducer,
+\nolinkurl{sherpa-onnx-zipformer-vi-2025-04-20}, with greedy
 search on the 16\,kHz output. The reference and the transcript are normalised alike: tags are
 removed, the text is put in Unicode NFC and lower-cased, and every character other than a
 letter or digit becomes a space. WER is computed at corpus level over all items of a system,
 not as a mean of per-item WERs.
 
-\textbf{SIM-o.} The speaker model is \nolinkurl{speechbrain/spkrec-ecapa-voxceleb}. Both
+\textbf{SIM-o.} The speaker model is ECAPA-TDNN~\citep{ecapa},
+\nolinkurl{speechbrain/spkrec-ecapa-voxceleb}. Both
 recordings are embedded at 16\,kHz and the embeddings are L2-normalised (0--1 in practice).
 
 \end{document}
