@@ -1,15 +1,19 @@
 % Listening-test table body (Table~\ref{tab:mos}). The paper includes it with
 % \input{tables/mos} inside a table environment that holds the caption and label.
 % Preview: pdflatex mos_preview.tex (in this directory).
-% NVV synthesis only. Each cell is a mean on the 1--5 scale with its 95% confidence interval.
+% NVV synthesis only. Each cell is a mean on the 1--5 scale with its 95% confidence interval,
+% both to 2 decimals. Ten listeners each rated 40 samples, balanced across the three systems.
+% Source values (Fish Audio is run "drama3"):
+% base 3.63 +- 0.026, 2.19 +- 0.042, 1.56 +- 0.034; Fish Audio 3.38 +- 0.038, 2.12 +- 0.050,
+% 1.96 +- 0.041; fine-tuned 3.89 +- 0.012, 3.15 +- 0.044, 2.96 +- 0.046.
 \small
 \begin{tabular}{lccc}
 \toprule
 System & \textbf{MOS-Q} $\uparrow$ & \textbf{MOS-N} $\uparrow$ & \textbf{MOS-E} $\uparrow$ \\
 \midrule
-Fish Audio                   & XX{\scriptsize$\pm$XX} & XX{\scriptsize$\pm$XX} & XX{\scriptsize$\pm$XX} \\
+Fish Audio                   & 3.38 $\pm$ 0.04 & 2.12 $\pm$ 0.05 & 1.96 $\pm$ 0.04 \\
 OmniVoice                   & & & \\
-\quad + base                 & XX{\scriptsize$\pm$XX} & XX{\scriptsize$\pm$XX} & XX{\scriptsize$\pm$XX} \\
-\quad + fine-tuned (ours)    & XX{\scriptsize$\pm$XX} & XX{\scriptsize$\pm$XX} & XX{\scriptsize$\pm$XX} \\
+\quad + base                 & 3.63 $\pm$ 0.03 & 2.19 $\pm$ 0.04 & 1.56 $\pm$ 0.03 \\
+\quad + fine-tuned (ours)    & 3.89 $\pm$ 0.01 & 3.15 $\pm$ 0.04 & 2.96 $\pm$ 0.05 \\
 \bottomrule
 \end{tabular}

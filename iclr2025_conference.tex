@@ -363,10 +363,12 @@ distortion and glitches. MOS-N rates naturalness: how much the speech sounds lik
 talking, including whether the vocalization sounds real and sits naturally in the sentence.
 MOS-E rates expressiveness: how well the sample conveys the reaction the text calls for, that
 is, whether the vocalization is the one the tag asks for and carries the feeling of the
-sentence, rather than sounding flat or out of place. XX listeners rate XX samples per system,
-and we report each score as a mean with its 95\% confidence interval (Table~\ref{tab:mos}).
-% TODO: say how samples are assigned to listeners and ordered, and whether system identity is
-% hidden from them.
+sentence, rather than sounding flat or out of place. Ten listeners each rate 40 samples,
+balanced across the three systems, and we report each score as a mean with its 95\% confidence
+interval (Table~\ref{tab:mos}).
+% TODO: say how samples are ordered, and whether system identity is hidden from the listeners.
+% CHECK: with about 130 ratings per system, a 95% CI on a 1-5 scale is usually around +-0.15;
+% the +-0.01 to 0.05 in Table 4 needs its computation confirmed.
 
 \subsection{Results}\label{sec:results}
 Table~\ref{tab:zeroshot} compares our fine-tuned model with the released OmniVoice and other
@@ -393,6 +395,11 @@ Fish Audio does worse than our model on both tasks. On plain text its word
 error rate is 11.31\%, more than twice ours, and its speaker similarity is 0.79. On a 280-item
 subset of the NVV test set it misses 65\% of the tags and realises only 23\% correctly, against
 35\% and 50\% for our model, with a word error rate of 60.48\%.
+
+Listeners prefer the fine-tuned model on all three scores (Table~\ref{tab:mos}). Its
+naturalness rises from 2.19 to 3.15 and its expressiveness from 1.56 to 2.96, against 2.12 and
+1.96 for Fish Audio, and its audio quality is the highest of the three (3.89, against 3.63 and
+3.38).
 
 \begin{table}[H]
 \caption{Zero-shot Vietnamese TTS on plain text, without NVV tags. Every system is evaluated on
@@ -423,7 +430,6 @@ MOS-Q: audio quality; MOS-N: naturalness; MOS-E: expressiveness.}
 \end{table}
 
 \section{Conclusion}\label{sec:conclusion}
-% TEMPORARY: rewrite once the fine-tuned results and the listening tests are in.
 We set out to give Vietnamese TTS the ability to laugh, sigh, cough and make other non-verbal
 sounds where the text asks for them. The released OmniVoice cannot do this: on our Vietnamese
 test sentences it made no sound at all for 64\% of the tags and the right sound in the right
@@ -435,17 +441,16 @@ pipeline produced about 811 hours of labelled speech covering 17 sound types. Fi
 data, OmniVoice makes the right sound at the right place for 50\% of tags, misses 35\% instead of
 64\%, and reads tagged sentences more accurately (WER 6.7\% against 8.1\%), at a small cost on plain
 text (WER 4.8\% against 3.9\%, with the same speaker similarity) and with a real-time factor of
-0.06, fast enough for
-live conversation.
+0.06, fast enough for live conversation. Listeners rate its naturalness and expressiveness well
+above both the released model and Fish Audio.
 
 The work has limits that the next steps should address. Each training example carries one sound,
 inserted into an existing pause, so sounds that overlap speech, such as laughing while talking,
 are not covered. The inserted sounds are recorded by other people and only converted into the
 target voice, so their style may not always suit a Vietnamese speaker. Three of the 17 sound
 types (burp, grunt and yell) are trained but not yet tested, and several detection thresholds
-in the evaluation are still to be calibrated by listening. Next, we plan to complete the
-listening tests against Fish Audio and the released OmniVoice, to train a version on ViVoice
-alone to separate the effect of the NVV data from that of extra Vietnamese training, and to
+in the evaluation are still to be calibrated by listening. Next, we plan to train a version on
+ViVoice alone to separate the effect of the NVV data from that of extra Vietnamese training, and to
 extend the test set to all 17 sound types.
 
 \bibliography{iclr2025_conference}

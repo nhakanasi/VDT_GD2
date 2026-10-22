@@ -136,9 +136,8 @@ Zero-shot TTS clones a voice it was never trained on from a few seconds of refer
 Neural codec language models such as VALL-E~\citep{valle} generate discrete acoustic tokens one
 step at a time, while non-autoregressive models such as Voicebox~\citep{voicebox},
 F5-TTS~\citep{f5tts} and MaskGCT~\citep{maskgct} generate speech by flow matching or masked
-prediction. CosyVoice~\citep{cosyvoice} and Seed-TTS~\citep{seedtts} pair a language model with
-a diffusion or flow-matching decoder, and XTTS~\citep{xtts} extends zero-shot cloning to many
-languages. OmniVoice~\citep{omnivoice}, the model we build on, scales this to over 600 languages
+prediction. CosyVoice~\citep{cosyvoice} pairs a language model with a flow-matching decoder,
+and XTTS~\citep{xtts} extends zero-shot cloning to many languages. OmniVoice~\citep{omnivoice}, the model we build on, scales this to over 600 languages
 with a non-autoregressive diffusion language model. For Vietnamese, viXTTS fine-tunes XTTS on the
 viVoice corpus~\citep{vivoice}, and other open systems fine-tune F5-TTS and similar models; we
 compare with four of them in Section~\ref{sec:results}. These systems read Vietnamese well, but
@@ -170,10 +169,20 @@ overview.
   pauses between words and marks them in the transcript; tag selection picks one of them and a
   tag, here [laughter]; clip selection draws a laughter clip that suits the speaker; voice
   conversion turns it into the speaker's voice; splicing inserts it into the pause; and the
-  filter keeps the result only if its quality holds. (b) The resulting NVV speech corpus, mixed
-  with untagged ViVoice speech, is used to fine-tune OmniVoice.}
+  filter keeps the result only if its quality holds. (b) The resulting NVV speech corpus is used
+  to fine-tune OmniVoice.}
   \label{fig:overview}
 \end{figure*}
+
+% Full-width floats appear at the top of the page after the one they are defined on, so
+% each table is defined a page ahead of the text that discusses it.
+\begin{table*}[t]
+\caption{Synthetic NVV training set per tag, after quality filtering.}
+\label{tab:synth}
+\centering
+\input{tables/synth_train}
+\end{table*}
+
 
 \subsection{Training-data synthesis}\label{sec:data}
 Each training example is a real Vietnamese utterance with one NVV spliced into one of its pauses
@@ -205,7 +214,7 @@ collected once, in six steps per utterance.
   per-class offset, and inserted with short exponential fades. Each side gets the target
   silence $T = \bar{T}_p\, s_g\, s^{(c)}$, where $\bar{T}_p$ is the speaker's median pause and
   $s_g$ and $s^{(c)}$ are global and per-class scales; silence is only added, filled with the
-  recording's own background noise.
+  recording's own background noise. SynParaSpeech does not describe this step.
 \item \textbf{Filter.} NISQA~\citep{nisqa} scores both the source and the spliced recording, and
   an example is kept only if neither its quality nor its continuity drops past a threshold,
   where SynParaSpeech relies on manual review.
@@ -218,28 +227,48 @@ voice from a reference recording. As released, it cannot generate Vietnamese NVV
 reasons. Its tag set is small: only two of its inline tags, [laughter] and [sigh], are
 non-verbal sounds, so 15 of our 17 classes have no tag. It has never seen a tag in Vietnamese:
 its tagged data come from Chinese and English corpora. And it was not trained for tag control,
-which its paper does not evaluate. We therefore fine-tune it on our synthetic data, which
-supplies all 17 tags on Vietnamese speech, mixed with untagged Vietnamese speech to preserve
-ordinary synthesis. The training objective is OmniVoice's own, and at inference the tag is
+which its paper does not evaluate. We therefore fine-tune it on our synthetic data alone, which
+supplies all 17 tags on Vietnamese speech. No untagged speech is mixed in: each utterance is
+long and carries a single tag, so most of it is ordinary speech, and the same data teaches both
+the tags and plain synthesis. The training objective is OmniVoice's own, and at inference the tag is
 written inline in the input text.
 
 \section{Experimental Setup}\label{sec:exp}
-\subsection{Data}
-Training uses ViVoice~\citep{vivoice} and the synthetic NVV set: 224,064 utterances (810.8\,h),
-each with one event, with 10,190 to 13,522 utterances per tag (Table~\ref{tab:synth}). Each
-training batch mixes synthetic and untagged utterances at a ratio of XX:XX.
-
 \begin{table*}[t]
-\caption{Synthetic NVV training set per tag, after quality filtering.}
-\label{tab:synth}
+\caption{Zero-shot Vietnamese TTS on the same 238 plain-text utterances. WER in \%. Fish Audio
+is queried through an API served with vLLM, not run as a local model, so its RTF is not
+measured.}
+\label{tab:zeroshot}
 \centering
-\input{tables/synth_train}
+\input{tables/zeroshot}
 \end{table*}
 
+
+\begin{table*}[h]
+\caption{Vietnamese NVV synthesis over 2,940 tagged items (14 classes). Fish Audio is evaluated
+on a 280-item subset, through an API served with vLLM, so its RTF is not measured. WER in \%.}
+\label{tab:para}
+\centering
+\input{tables/para_nvv}
+\end{table*}
+
+\begin{table*}[h]
+\caption{Listening test on NVV synthesis (1--5, with 95\% confidence intervals).}
+\label{tab:mos}
+\centering
+\input{tables/mos}
+\end{table*}
+
+
+
+\subsection{Data}
+Training uses only the synthetic NVV set, built from ViVoice~\citep{vivoice}: 224,064
+utterances (810.8\,h), each with one event, with 10,190 to 13,522 utterances per tag
+(Table~\ref{tab:synth}).
+
 \subsection{Training}
-We initialise from the public OmniVoice checkpoint and fine-tune all parameters with AdamW
-($\beta_1{=}0.9$, $\beta_2{=}0.98$), peak learning rate XX, XX warm-up steps and decay, for XX
-steps with a batch of XX\,s of audio per GPU, in bf16. Training takes XX\,h on NVIDIA B200.
+We initialise from the public OmniVoice checkpoint and fine-tune all parameters with the
+default settings of OmniVoice's training configuration for 10,000 steps, on NVIDIA B200 GPUs.
 
 \subsection{Baselines}
 We evaluate two tasks. In zero-shot TTS, the input is plain Vietnamese text without tags; this
@@ -263,63 +292,44 @@ event detector finds a vocalization of the tagged class at the tag's position. T
 text. SIM-o (0--1, higher is better) is the cosine between the speaker embeddings of the output
 and of the reference voice. The real-time factor (RTF, lower is better) is the time to
 synthesise an utterance divided by its duration, on one NVIDIA A100 GPU. In the listening test,
-native Vietnamese listeners rate each NVV sample from 1 (bad) to 5 (excellent) on quality
+ten native Vietnamese listeners each rate 40 NVV samples, balanced across the three systems,
+from 1 (bad) to 5 (excellent) on quality
 (MOS-Q), naturalness (MOS-N) and expressiveness (MOS-E), the last asking whether the
 vocalization is the one the tag asks for and carries the feeling of the sentence.
 
 \section{Results}\label{sec:results}
-\begin{table*}[t]
-\caption{Zero-shot Vietnamese TTS on the same 238 plain-text utterances. WER in \%. Fish Audio
-is queried through an API served with vLLM, not run as a local model, so its RTF is not
-measured.}
-\label{tab:zeroshot}
-\centering
-\input{tables/zeroshot}
-\end{table*}
-
-\begin{table*}[t]
-\caption{Vietnamese NVV synthesis over 2,940 tagged items (14 classes). Fish Audio is evaluated
-on a 280-item subset, through an API served with vLLM, so its RTF is not measured. WER in \%.}
-\label{tab:para}
-\centering
-\input{tables/para_nvv}
-\end{table*}
-
-\begin{table*}[t]
-\caption{Listening test on NVV synthesis (1--5, with 95\% confidence intervals).}
-\label{tab:mos}
-\centering
-\input{tables/mos}
-\end{table*}
-
 Given Vietnamese text, the released OmniVoice produces no vocalization at 37\% of the [laughter]
 and [sigh] tags, the two it supports, and at 69\% of the other 12; even its own two tags behave
 very differently, with a correct laugh for 79\% of [laughter] tags but a correct sigh for only
 1\% of [sigh] tags. Fine-tuning on our data changes this (Table~\ref{tab:para}). The share of
 missed tags falls from 64\% to 35\%, and the share realised correctly rises from 11.5\% to 50\%:
-from 40\% to 86\% on the two shared tags and from 7\% to 44\% on the new ones. The word error
+from 40\% to 86\% on laughter and sigh and from 7\% to 44\% on the new tags. The word error
 rate on the tagged sentences also falls, from 8.11\% to 6.73\%, and speaker similarity stays
 close (0.74 against 0.75). On plain text (Table~\ref{tab:zeroshot}), the cost is small: the word
 error rate rises from 3.93\% to 4.78\%, speaker similarity is 0.84 for both models, and the RTF
-stays at 0.06. Fish Audio does worse on both tasks: a word error rate of
-11.31\% on plain text and, on NVV synthesis, 65\% of tags missed and 23\% correct.
+stays at 0.06. Fish Audio does worse than our model on both tasks: a word error rate of
+11.31\% on plain text and, on NVV synthesis, 65\% of tags missed and 23\% correct. Its high
+word error rate (60.48\%) and low speaker similarity (0.32) on NVV synthesis share one cause:
+after a tag, whether or not it produced the sound, Fish Audio often drops the rest of the
+sentence and leaves a long pause in its place.
+Listeners prefer the fine-tuned model on all three scores (Table~\ref{tab:mos}). Its
+naturalness rises from 2.19 to 3.15 and its expressiveness from 1.56 to 2.96, against 2.12 and
+1.96 for Fish Audio, and its audio quality is the highest of the three (3.89, against 3.63 and
+3.38).
 
 \section{Conclusion}\label{sec:conclusion}
 We set out to give Vietnamese TTS the ability to laugh, sigh, cough and make other non-verbal
-sounds where the text asks for them. Because no Vietnamese training data for this task existed,
-we built a pipeline that creates it automatically from real Vietnamese speech, adapting
-SynParaSpeech with a larger sound inventory, an audio model that places each tag in a real
-pause, speaker-matched sound selection, natural pauses and automatic quality checks. The
-pipeline produced about 811 hours of labelled speech covering 17 sound types. Fine-tuned on this
-data, OmniVoice makes the right sound at the right place for 50\% of tags instead of 11.5\%,
+sounds where the text asks for them. We built a pipeline that creates the missing training data
+automatically from real Vietnamese speech, producing about 811 hours over 17 sound types.
+Fine-tuned on this data, OmniVoice makes the right sound at the right place for 50\% of tags instead of 11.5\%,
 misses 35\% instead of 64\%, and reads tagged sentences more accurately, at a small cost on plain
-text and with a real-time factor of 0.06.
+text and with a real-time factor of 0.06; listeners rate its naturalness and expressiveness well
+above both the released model and Fish Audio.
 
 The work has limits. Each training example carries one sound, inserted into an existing pause,
 so sounds that overlap speech, such as laughing while talking, are not covered. The inserted
 sounds are recorded by other people and only converted into the target voice. Burp, grunt and
-yell are trained but not yet tested. Next, we plan to complete the listening test, to train a
-version on ViVoice alone to separate the effect of the NVV data from that of extra Vietnamese
+yell are trained but not yet tested. Next, we plan to train a version on ViVoice alone to separate the effect of the NVV data from that of extra Vietnamese
 training, and to extend the test set to all 17 sound types.
 
 \bibliographystyle{unsrtnat}
